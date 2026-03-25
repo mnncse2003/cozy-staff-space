@@ -49,6 +49,17 @@ A comprehensive multi-organization web-based HR Management System built with Rea
   - Receive private birthday notifications
 - **Notifications**: View system-wide announcements and birthday wishes in notification center
 - **Device Session Management**: View all logged-in devices and terminate sessions remotely
+- **Chat / Messaging**:
+  - Real-time one-on-one and group messaging within the organization
+  - Send text messages, images, and file attachments
+  - Conversation list with unread message counts
+  - Mobile-responsive chat interface with back navigation
+  - Floating chat widget accessible from any page (with unread badge)
+- **Helpdesk**:
+  - Submit support tickets with subject, category, priority, and description
+  - Track ticket status (open, in-progress, resolved, closed)
+  - Search and filter tickets by status and priority
+  - View ticket responses and conversation history
 
 ### Super Admin Features
 - **Organization Management**:
@@ -95,6 +106,12 @@ A comprehensive multi-organization web-based HR Management System built with Rea
 - **Holiday Management**: 
   - Create and manage company holidays for their organization
   - Set holiday dates and descriptions
+- **Shift Management**:
+  - Create, edit, and delete work shifts with custom start/end times
+  - Assign shifts to individual employees via searchable dropdown
+  - Set a default shift for the organization
+  - View all shift assignments in a tabular format
+  - Accessible to both HR and HOD roles
 - **Device Access Control** (Security):
   - View all active device sessions per user
   - Configure simultaneous device login limits (per user or organization-wide)
@@ -118,16 +135,49 @@ A comprehensive multi-organization web-based HR Management System built with Rea
   - Pre-compose birthday wish templates
   - Manage notification visibility and delivery
   - Login notifications for new device logins
+  - Login notification modal displayed on sign-in
 - **Organization Branding**:
   - Update organization logo and name
   - Customize organization appearance
 - **Dashboard Customization**: Employees can customize sidebar visibility and dashboard widgets
 - **HR Analytics**: View organization-wide HR metrics and reports
+- **Helpdesk Management**:
+  - View and respond to all employee support tickets
+  - Update ticket statuses (open → in-progress → resolved → closed)
+  - Filter and search across all organization tickets
+  - Stats overview with total, open, resolved, and personal ticket counts
 
 ### HOD Features
 - **Leave Approvals**: Approve or reject leave requests for department employees only
 - **Department View**: View employees within assigned department
+- **Shift Management**: View and manage shift assignments for department employees
+- **Attendance Management & Reporting**: Access attendance management and reports for the department
+- **Exit Management**: Participate in exit management processes
 - **Restricted Access**: Cannot manage employees, departments, attendance, or holidays
+
+### Pricing & Subscriptions
+- **Tiered Pricing Plans**:
+  - **Starter** (₹4,099/mo): Up to 50 employees, basic attendance, leave management, monthly reports, email support
+  - **Professional** (₹8,299/mo): Up to 200 employees, advanced attendance, salary slips, custom branding, analytics dashboard, priority support
+  - **Enterprise**: Unlimited employees, multi-organization, custom integrations, dedicated account manager, SLA guarantee
+- **Razorpay Payment Integration**: Seamless online payment for plan subscriptions with INR currency support
+- **Subscription Tracking**: Payment records stored in Firebase with status tracking (pending, success, failed, cancelled)
+
+## Design System & Styling
+
+The application uses a comprehensive design system with semantic HSL color tokens:
+
+- **Primary**: Teal/green accent (`162 73% 46%`) for primary actions and branding
+- **Secondary**: Sky blue (`200 95% 65%`) for secondary elements
+- **Accent**: Green (`140 65% 55%`) for highlights
+- **Success/Warning/Destructive**: Contextual feedback colors
+- **Dark Mode**: Full dark mode support with separate token set
+- **Sidebar Theming**: Dedicated sidebar color tokens for consistent navigation styling
+- **Chart Colors**: Five distinct chart colors for data visualization consistency
+- **Rounded Design**: `1rem` border radius for a modern, soft UI feel
+- **Component Library**: Built on shadcn/ui (Radix UI primitives) with Tailwind CSS utility classes
+- **Responsive Layout**: Mobile-first design with collapsible sidebar and adaptive grid layouts
+- **Animations**: Framer Motion for smooth transitions and interactive elements
 
 ## Security Features
 
@@ -168,7 +218,9 @@ A comprehensive multi-organization web-based HR Management System built with Rea
   - Firestore Database
   - Cloud Storage
   - Security Rules
-- **Routing**: React Router DOM
+- **Payments**: Razorpay (checkout integration for subscription plans)
+- **Routing**: React Router DOM (HashRouter)
+- **State Management**: React Query (@tanstack/react-query)
 - **Form Handling**: React Hook Form with Zod validation
 - **Date Handling**: date-fns, react-day-picker, react-calendar
 - **Charts**: Recharts
@@ -241,12 +293,24 @@ A comprehensive multi-organization web-based HR Management System built with Rea
    - `clearance_processes` - Exit clearance tracking
    - `exit_interviews` - Exit interview records
    - `settlements` - Full and final settlement records
+   - `conversations` - Chat conversations between employees
+   - `messages` - Individual chat messages
+   - `helpdesk_tickets` - Support ticket records
+   - `shifts` - Work shift definitions
+   - `shift_assignments` - Employee-to-shift mappings
+   - `subscriptions` - Payment/subscription records (Razorpay)
+   - `user_preferences` - User menu and dashboard preferences
+   - `system_settings` - Global system configuration (logo, name)
 
-5. **Deploy Firebase Security Rules**
+5. **Razorpay Configuration** (Optional — for payment features)
+   
+   Update `src/lib/razorpay.ts` with your Razorpay Key ID, or set the `VITE_RAZORPAY_KEY_ID` environment variable.
+
+6. **Deploy Firebase Security Rules**
    
    Deploy the storage rules from `storage.rules` file to ensure proper data isolation.
 
-6. **Start the development server**
+7. **Start the development server**
    ```bash
    npm run dev
    ```
@@ -274,6 +338,8 @@ The system supports five user roles with specific permissions:
    - Exit management (resignation submission, clearance tracking)
    - Birthday wishes and notifications
    - Device session management
+   - Real-time chat / messaging with colleagues
+   - Helpdesk ticket submission and tracking
 
 3. **HR** - Human resources personnel with organization-level administrative access to:
    - Employee management within their organization
@@ -281,6 +347,7 @@ The system supports five user roles with specific permissions:
    - Attendance and leave management
    - Salary slip generation
    - Department and holiday management
+   - Shift management (create shifts, assign to employees)
    - Device access control and security management
    - Exit management (resignations, clearance, interviews, settlements)
    - Self-service request approvals
@@ -288,10 +355,14 @@ The system supports five user roles with specific permissions:
    - User account management (block/unblock, password reset)
    - Organization branding configuration
    - HR Analytics dashboard
+   - Helpdesk ticket management and responses
+   - Chat / messaging with employees
 
 4. **HOD** - Head of Department with limited administrative access:
    - Leave approvals for department employees only
    - View department employee records
+   - Shift management and attendance reports for department
+   - Exit management participation
    - Cannot manage employees, departments, attendance records, or holidays
 
 5. **Intern** - Temporary employees with access similar to Staff role
@@ -308,6 +379,7 @@ The system supports five user roles with specific permissions:
 2. **Credentials Entry**: Enter email/employee code and password
 3. **Device Session Creation**: System creates device session and enforces limits
 4. **Organization Branding**: Organization logo and name are displayed after selection
+5. **Login Notification Modal**: Unread notifications displayed immediately after login
 
 ### Login Credentials
 - **Email**: Employee's actual email address (primary login method)
@@ -376,6 +448,33 @@ Employees have access to a self-service portal for:
 - **Full & Final Settlement**: Calculate and process final settlements
 - **Experience Certificates**: Generate employment certificates
 
+## Chat & Messaging
+
+- **Real-time Messaging**: Firebase-powered real-time chat between organization employees
+- **Conversation Types**: One-on-one and group conversations
+- **Rich Media**: Send text, images, and file attachments with cloud storage
+- **Unread Tracking**: Per-user unread message counts with badge notifications
+- **Floating Widget**: Accessible chat widget from any page with minimizable UI
+- **Mobile Optimized**: Responsive layout with list/detail navigation on mobile
+- **Organization Scoped**: Conversations isolated per organization
+
+## Helpdesk / Support Ticketing
+
+- **Ticket Creation**: Employees submit tickets with subject, category (payroll, leave, attendance, technical, benefits, other), priority (low/medium/high), and description
+- **Ticket Lifecycle**: Open → In Progress → Resolved → Closed
+- **Threaded Responses**: HR and employees can add responses to tickets
+- **Search & Filters**: Full-text search, status filter, and priority filter
+- **Dashboard Stats**: Total, open, resolved, and personal ticket counts at a glance
+- **Auto Ticket Numbers**: Unique ticket IDs generated automatically
+
+## Shift Management
+
+- **Shift Definitions**: Create named shifts with start and end times
+- **Default Shifts**: Mark one shift as the organization default
+- **Employee Assignment**: Assign specific shifts to employees via searchable dropdown
+- **Tabbed Interface**: Separate tabs for managing shifts and viewing assignments
+- **Role-Based Access**: Available to HR (full CRUD) and HOD (view and assign)
+
 ## Usage
 
 ### For Super Admin
@@ -396,7 +495,9 @@ Employees have access to a self-service portal for:
 7. Access self-service portal for tax, investments, reimbursements
 8. View salary slips and download as needed
 9. Send birthday wishes to colleagues
-10. Submit resignation through exit management if needed
+10. Use the chat feature to message colleagues in real time
+11. Submit helpdesk tickets for any support needs
+12. Submit resignation through exit management if needed
 
 ### For HR/Admin
 1. Select your organization from the list
@@ -406,10 +507,12 @@ Employees have access to a self-service portal for:
 5. Review and approve attendance edits and leave requests
 6. Generate monthly salary slips
 7. Manage departments, holidays, and notifications
-8. Handle exit processes (resignations, clearance, settlements)
-9. Review self-service requests
-10. Update organization branding
-11. View HR Analytics
+8. Create and assign work shifts to employees
+9. Handle exit processes (resignations, clearance, settlements)
+10. Review self-service requests
+11. Respond to helpdesk tickets and update statuses
+12. Update organization branding
+13. View HR Analytics
 
 ### For HOD
 1. Select your organization from the list
@@ -417,53 +520,75 @@ Employees have access to a self-service portal for:
 3. Review leave requests for your department
 4. Approve or reject leaves with comments
 5. View department employee records
+6. Manage shift assignments for department employees
 
 ## Project Structure
 
 ```
 src/
 ├── components/
+│   ├── chat/                    # Chat/messaging components
+│   │   ├── ChatWindow.tsx       # Real-time chat window
+│   │   ├── ConversationList.tsx  # Conversation sidebar
+│   │   └── FloatingChatWidget.tsx # Floating chat overlay
 │   ├── dashboard/
-│   │   ├── admin/              # Admin-specific components
-│   │   │   ├── employee/       # Employee management components
-│   │   │   └── exit/           # Exit management components
-│   │   ├── employee/           # Employee-specific components
-│   │   │   └── exit/           # Employee exit components
+│   │   ├── admin/               # Admin-specific components
+│   │   │   ├── employee/        # Employee management components
+│   │   │   ├── exit/            # Exit management components
+│   │   │   └── ShiftManagement.tsx # Shift CRUD & assignment
+│   │   ├── employee/            # Employee-specific components
+│   │   │   └── exit/            # Employee exit components
 │   │   ├── BirthdayWidget.tsx
-│   │   └── DashboardSettings.tsx
-│   ├── employee/               # Employee directory components
-│   ├── login/                  # Login page components
-│   ├── notifications/          # Notification components
-│   ├── profile/                # Profile components
+│   │   ├── DashboardSettings.tsx
+│   │   └── WeatherWidget.tsx
+│   ├── employee/                # Employee directory components
+│   ├── login/                   # Login page components
+│   │   ├── Confetti.tsx         # Login celebration animation
+│   │   └── LoginCharacter.tsx   # Animated login character
+│   ├── notifications/           # Notification components
+│   │   ├── LoginNotificationModal.tsx # Post-login notification popup
+│   │   ├── NotificationBell.tsx
+│   │   └── NotificationManager.tsx
+│   ├── profile/                 # Profile components
 │   │   └── LoginDevicesSection.tsx
-│   ├── self-service/           # Self-service portal components
-│   └── ui/                     # Reusable UI components (shadcn/ui)
-│       └── searchable-employee-select.tsx
+│   ├── self-service/            # Self-service portal components
+│   └── ui/                      # Reusable UI components (shadcn/ui)
+│       ├── searchable-employee-select.tsx
+│       └── document-viewer.tsx
 ├── contexts/
-│   └── AuthContext.tsx         # Authentication context with device session management
+│   └── AuthContext.tsx          # Authentication context with device session management
 ├── hooks/
-│   ├── use-mobile.tsx
+│   ├── use-mobile.tsx           # Mobile breakpoint detection
 │   └── use-toast.ts
 ├── lib/
-│   ├── firebase.ts             # Firebase configuration
-│   ├── deviceFingerprint.ts    # Device fingerprint generation
-│   ├── deviceSessionService.ts # Device session management service
-│   └── utils.ts                # Utility functions
+│   ├── firebase.ts              # Firebase configuration
+│   ├── chatService.ts           # Chat messaging service (conversations, messages, attachments)
+│   ├── dateUtils.ts             # Date utility functions
+│   ├── deviceFingerprint.ts     # Device fingerprint generation
+│   ├── deviceSessionService.ts  # Device session management service
+│   ├── razorpay.ts              # Razorpay payment integration
+│   └── utils.ts                 # Utility functions
 ├── pages/
-│   ├── admin/                  # Admin pages
-│   │   ├── DeviceAccess.tsx    # Device access control page
-│   │   ├── ExitManagement.tsx  # Exit management page
+│   ├── admin/                   # Admin pages
+│   │   ├── DeviceAccess.tsx     # Device access control page
+│   │   ├── ExitManagement.tsx   # Exit management page
+│   │   ├── HRAnalytics.tsx      # HR analytics dashboard
+│   │   ├── ShiftManagement.tsx  # Shift management page
+│   │   ├── OrganizationManagement.tsx
 │   │   └── ...
-│   ├── Dashboard.tsx           # Main dashboard
-│   ├── Login.tsx               # Login page
-│   ├── Profile.tsx             # Profile page
-│   ├── SelfService.tsx         # Self-service portal
-│   ├── Exit.tsx                # Employee exit page
+│   ├── Chat.tsx                 # Full-page chat interface
+│   ├── Dashboard.tsx            # Main dashboard
+│   ├── Helpdesk.tsx             # Helpdesk ticketing page
+│   ├── Login.tsx                # Login page
+│   ├── Pricing.tsx              # Subscription pricing page
+│   ├── Profile.tsx              # Profile page
+│   ├── SelfService.tsx          # Self-service portal
+│   ├── Exit.tsx                 # Employee exit page
 │   └── ...
 ├── types/
-│   └── leave.ts                # Leave type definitions
-├── App.tsx
-├── index.css                   # Global styles with design tokens
+│   └── leave.ts                 # Leave type definitions
+├── App.tsx                      # Root component with routes
+├── index.css                    # Global styles with HSL design tokens
 └── main.tsx
 ```
 
@@ -501,3 +626,4 @@ This project is available for use under standard terms.
 - Icons from [Lucide](https://lucide.dev/)
 - Charts from [Recharts](https://recharts.org/)
 - Animations from [Framer Motion](https://www.framer.com/motion/)
+- Payments by [Razorpay](https://razorpay.com/)
