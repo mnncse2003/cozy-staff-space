@@ -95,6 +95,8 @@ const DEFAULT_MENU_PREFERENCES: MenuPreferences = {
   notifications: true,
   chat: true,
   shiftManagement: true,
+  faceEnrollment: true,
+  faceAttendance: true,
 };
 
 export function AppSidebar() {
