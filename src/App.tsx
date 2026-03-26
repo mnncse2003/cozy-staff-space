@@ -97,6 +97,8 @@ const App = () => (
             <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
             <Route path="/chat" element={<ProtectedRoute><Chat /></ProtectedRoute>} />
             <Route path="/shift-management" element={<ProtectedRoute><ShiftManagement /></ProtectedRoute>} />
+            <Route path="/face-enrollment" element={<ProtectedRoute><FaceEnrollment /></ProtectedRoute>} />
+            <Route path="/face-attendance" element={<ProtectedRoute><FaceAttendance /></ProtectedRoute>} />
 
             <Route path="/" element={<Navigate to="/login" />} />
             <Route path="*" element={<NotFound />} />
