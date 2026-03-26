@@ -65,6 +65,8 @@ interface MenuPreferences {
   notifications: boolean;
   chat: boolean;
   shiftManagement: boolean;
+  faceEnrollment: boolean;
+  faceAttendance: boolean;
 }
 
 const DEFAULT_MENU_PREFERENCES: MenuPreferences = {
