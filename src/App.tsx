@@ -40,6 +40,8 @@ import DeviceAccess from "./pages/admin/DeviceAccess";
 import Notifications from "./pages/admin/Notifications";
 import Chat from "./pages/Chat";
 import ShiftManagement from "./pages/admin/ShiftManagement";
+import FaceEnrollment from "./pages/admin/FaceEnrollment";
+import FaceAttendance from "./pages/admin/FaceAttendance";
 import InstallApp from "./components/InstallApp";
 
 const queryClient = new QueryClient();
