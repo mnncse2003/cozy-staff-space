@@ -40,6 +40,7 @@ import DeviceAccess from "./pages/admin/DeviceAccess";
 import Notifications from "./pages/admin/Notifications";
 import Chat from "./pages/Chat";
 import ShiftManagement from "./pages/admin/ShiftManagement";
+import InstallApp from "./components/InstallApp";
 
 const queryClient = new QueryClient();
 
@@ -99,6 +100,7 @@ const App = () => (
             <Route path="*" element={<NotFound />} />
           </Routes>
         </HashRouter>
+        <InstallApp />
 
       </TooltipProvider>
     </AuthProvider>
