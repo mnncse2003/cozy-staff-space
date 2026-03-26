@@ -19,6 +19,7 @@ import {
   Shield,
   Bell,
   Timer,
+  ScanFace,
 } from 'lucide-react';
 import {
   Sidebar,
@@ -64,6 +65,8 @@ interface MenuPreferences {
   notifications: boolean;
   chat: boolean;
   shiftManagement: boolean;
+  faceEnrollment: boolean;
+  faceAttendance: boolean;
 }
 
 const DEFAULT_MENU_PREFERENCES: MenuPreferences = {
@@ -92,6 +95,8 @@ const DEFAULT_MENU_PREFERENCES: MenuPreferences = {
   notifications: true,
   chat: true,
   shiftManagement: true,
+  faceEnrollment: true,
+  faceAttendance: true,
 };
 
 export function AppSidebar() {
@@ -225,6 +230,8 @@ export function AppSidebar() {
     { id: '/self-service-management', label: 'Self Service Mgmt', icon: Settings, visible: Boolean(menuPreferences.selfServiceManagement) && normalizedRole === 'hr' },
     { id: '/hr-analytics', label: 'HR Analytics', icon: BarChart3, visible: Boolean(menuPreferences.hrAnalytics) && normalizedRole === 'hr' },
     { id: '/device-access', label: 'Device Access', icon: Shield, visible: Boolean(menuPreferences.deviceAccess) && normalizedRole === 'hr' },
+    { id: '/face-enrollment', label: 'Face Enrollment', icon: ScanFace, visible: Boolean(menuPreferences.faceEnrollment) && normalizedRole === 'hr' },
+    { id: '/face-attendance', label: 'Face Attendance', icon: ScanFace, visible: Boolean(menuPreferences.faceAttendance) && (normalizedRole === 'hr' || normalizedRole === 'hod') },
   ];
 
   const menuItems = isSuperAdmin ? superAdminMenuItems : (isEmployee ? employeeMenuItems : adminMenuItems);
