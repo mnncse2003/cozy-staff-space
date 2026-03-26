@@ -19,6 +19,7 @@ import {
   Shield,
   Bell,
   Timer,
+  ScanFace,
 } from 'lucide-react';
 import {
   Sidebar,
