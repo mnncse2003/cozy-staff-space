@@ -7,7 +7,8 @@ import { SearchableEmployeeSelect, Employee } from '@/components/ui/searchable-e
 import { collection, getDocs, query, where, doc, setDoc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/contexts/AuthContext';
-import { loadFaceModels, detectFace, descriptorToArray } from '@/lib/faceRecognitionService';
+import { loadFaceModels, descriptorToArray } from '@/lib/faceRecognitionService';
+import * as faceapi from 'face-api.js';
 import { toast } from 'sonner';
 import { Camera, CheckCircle2, Loader2, AlertCircle, UserCheck, RefreshCw } from 'lucide-react';
 
@@ -27,6 +28,7 @@ const FaceEnrollment = () => {
   const [enrolled, setEnrolled] = useState(false);
   const [faceDetected, setFaceDetected] = useState(false);
   const [existingEnrollment, setExistingEnrollment] = useState(false);
+  const [videoReady, setVideoReady] = useState(false);
   const detectionIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   const REQUIRED_CAPTURES = 3;
@@ -59,7 +61,7 @@ const FaceEnrollment = () => {
         setModelsReady(true);
       } catch (e) {
         console.error('Error loading face models:', e);
-        toast.error('Failed to load face recognition models. Ensure /public/models/ contains the required model files.');
+        toast.error('Failed to load face recognition models.');
       } finally {
         setLoadingModels(false);
       }
@@ -89,14 +91,21 @@ const FaceEnrollment = () => {
   const startCamera = useCallback(async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { width: 640, height: 480, facingMode: 'user' },
+        video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: 'user' },
       });
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
         streamRef.current = stream;
-        setCameraActive(true);
+        setVideoReady(false);
+        
+        // Wait for video to actually be playing
+        videoRef.current.onloadeddata = () => {
+          setVideoReady(true);
+          setCameraActive(true);
+        };
       }
     } catch (e) {
+      console.error('Camera error:', e);
       toast.error('Could not access camera. Please allow camera permissions.');
     }
   }, []);
@@ -112,40 +121,52 @@ const FaceEnrollment = () => {
     }
     setCameraActive(false);
     setFaceDetected(false);
+    setVideoReady(false);
   }, []);
 
   // Real-time face detection overlay
   useEffect(() => {
-    if (!cameraActive || !modelsReady) return;
+    if (!cameraActive || !modelsReady || !videoReady) return;
 
     detectionIntervalRef.current = setInterval(async () => {
-      if (!videoRef.current || videoRef.current.readyState !== 4) return;
-      const result = await detectFace(videoRef.current);
-      setFaceDetected(!!result);
+      if (!videoRef.current || videoRef.current.readyState < 4) return;
+      if (videoRef.current.videoWidth === 0 || videoRef.current.videoHeight === 0) return;
+      
+      try {
+        const result = await faceapi
+          .detectSingleFace(videoRef.current, new faceapi.SsdMobilenetv1Options({ minConfidence: 0.4 }))
+          .withFaceLandmarks()
+          .withFaceDescriptor();
+        
+        setFaceDetected(!!result);
 
-      // Draw detection box
-      if (canvasRef.current && videoRef.current) {
-        const canvas = canvasRef.current;
-        const video = videoRef.current;
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-        const ctx = canvas.getContext('2d');
-        if (ctx) {
-          ctx.clearRect(0, 0, canvas.width, canvas.height);
-          if (result) {
-            const { x, y, width, height } = result.detection.box;
-            ctx.strokeStyle = '#22c55e';
-            ctx.lineWidth = 3;
-            ctx.strokeRect(x, y, width, height);
+        if (canvasRef.current && videoRef.current) {
+          const canvas = canvasRef.current;
+          const video = videoRef.current;
+          canvas.width = video.videoWidth;
+          canvas.height = video.videoHeight;
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            if (result) {
+              const { x, y, width, height } = result.detection.box;
+              ctx.strokeStyle = '#22c55e';
+              ctx.lineWidth = 3;
+              ctx.strokeRect(x, y, width, height);
+              ctx.fillStyle = 'rgba(34, 197, 94, 0.1)';
+              ctx.fillRect(x, y, width, height);
+            }
           }
         }
+      } catch (e) {
+        console.warn('Detection frame error:', e);
       }
-    }, 500);
+    }, 600);
 
     return () => {
       if (detectionIntervalRef.current) clearInterval(detectionIntervalRef.current);
     };
-  }, [cameraActive, modelsReady]);
+  }, [cameraActive, modelsReady, videoReady]);
 
   // Cleanup on unmount
   useEffect(() => () => stopCamera(), [stopCamera]);
@@ -153,11 +174,33 @@ const FaceEnrollment = () => {
   const captureFace = async () => {
     if (!videoRef.current || !modelsReady || !selectedEmployeeId) return;
 
+    // Check video is ready
+    if (videoRef.current.readyState < 4 || videoRef.current.videoWidth === 0) {
+      toast.error('Camera not ready. Please wait a moment.');
+      return;
+    }
+
     setCapturing(true);
     try {
-      const result = await detectFace(videoRef.current);
+      // Create a canvas snapshot from the video for more reliable detection
+      const tempCanvas = document.createElement('canvas');
+      tempCanvas.width = videoRef.current.videoWidth;
+      tempCanvas.height = videoRef.current.videoHeight;
+      const tempCtx = tempCanvas.getContext('2d');
+      if (!tempCtx) {
+        toast.error('Canvas error. Please try again.');
+        setCapturing(false);
+        return;
+      }
+      tempCtx.drawImage(videoRef.current, 0, 0);
+
+      const result = await faceapi
+        .detectSingleFace(tempCanvas, new faceapi.SsdMobilenetv1Options({ minConfidence: 0.3 }))
+        .withFaceLandmarks()
+        .withFaceDescriptor();
+
       if (!result) {
-        toast.error('No face detected. Please align your face in the frame.');
+        toast.error('No face detected. Please ensure good lighting and face the camera directly.');
         setCapturing(false);
         return;
       }
@@ -165,12 +208,17 @@ const FaceEnrollment = () => {
       const descriptorArray = descriptorToArray(result.descriptor);
       const newCount = captureCount + 1;
 
-      // Store face data – we accumulate multiple descriptors for accuracy
+      // Store face data
       const faceDocRef = doc(db, 'face_data', selectedEmployeeId);
       const existing = await getDoc(faceDocRef);
       const existingDescriptors: number[][] = existing.exists()
         ? existing.data().descriptors || []
         : [];
+
+      // If re-enrolling and this is the first capture, clear old data
+      if (newCount === 1 && existingEnrollment) {
+        existingDescriptors.length = 0;
+      }
 
       existingDescriptors.push(descriptorArray);
 
@@ -182,7 +230,7 @@ const FaceEnrollment = () => {
         employeeCode: emp?.employeeCode || '',
         organizationId,
         descriptors: existingDescriptors,
-        enrolledAt: new Date().toISOString(),
+        enrolledAt: existing.exists() ? existing.data().enrolledAt : new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       });
 
@@ -195,9 +243,9 @@ const FaceEnrollment = () => {
       } else {
         toast.success(`Capture ${newCount}/${REQUIRED_CAPTURES} saved. Slightly change angle for next capture.`);
       }
-    } catch (e) {
+    } catch (e: any) {
       console.error('Error capturing face:', e);
-      toast.error('Failed to capture face data.');
+      toast.error(`Capture failed: ${e?.message || 'Unknown error'}. Please try again.`);
     } finally {
       setCapturing(false);
     }
@@ -212,7 +260,6 @@ const FaceEnrollment = () => {
   return (
     <Layout pageTitle="Face Enrollment">
       <div className="space-y-6 p-4 sm:p-6 max-w-4xl mx-auto">
-        {/* Models Status */}
         {loadingModels && (
           <Card className="border-blue-200 bg-blue-50 dark:bg-blue-950/20">
             <CardContent className="flex items-center gap-3 py-4">
@@ -235,7 +282,6 @@ const FaceEnrollment = () => {
           </Card>
         )}
 
-        {/* Employee Selection */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -261,13 +307,12 @@ const FaceEnrollment = () => {
             {selectedEmployeeId && existingEnrollment && !enrolled && (
               <div className="flex items-center gap-2 text-sm text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/20 p-3 rounded-lg">
                 <AlertCircle className="h-4 w-4 flex-shrink-0" />
-                This employee already has face data enrolled. Capturing again will update their data.
+                This employee already has face data enrolled. Capturing again will replace their data.
               </div>
             )}
           </CardContent>
         </Card>
 
-        {/* Camera & Capture */}
         {selectedEmployeeId && modelsReady && !enrolled && (
           <Card>
             <CardHeader>
@@ -280,7 +325,6 @@ const FaceEnrollment = () => {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              {/* Instructions */}
               <div className="bg-muted/50 p-4 rounded-lg space-y-2 text-sm">
                 <p className="font-medium">Instructions:</p>
                 <ul className="list-disc list-inside space-y-1 text-muted-foreground">
@@ -291,14 +335,13 @@ const FaceEnrollment = () => {
                 </ul>
               </div>
 
-              {/* Camera View */}
               <div className="relative aspect-video bg-black rounded-lg overflow-hidden max-w-lg mx-auto">
                 <video
                   ref={videoRef}
                   autoPlay
                   playsInline
                   muted
-                  className="w-full h-full object-cover mirror"
+                  className="w-full h-full object-cover"
                   style={{ transform: 'scaleX(-1)' }}
                 />
                 <canvas
@@ -316,7 +359,6 @@ const FaceEnrollment = () => {
                   </div>
                 )}
 
-                {/* Status overlay */}
                 {cameraActive && (
                   <div className="absolute top-3 left-3">
                     <Badge variant={faceDetected ? 'default' : 'destructive'} className="gap-1">
@@ -335,7 +377,6 @@ const FaceEnrollment = () => {
                   </div>
                 )}
 
-                {/* Progress */}
                 {cameraActive && (
                   <div className="absolute top-3 right-3">
                     <Badge variant="secondary">
@@ -345,7 +386,6 @@ const FaceEnrollment = () => {
                 )}
               </div>
 
-              {/* Controls */}
               {cameraActive && (
                 <div className="flex justify-center gap-3">
                   <Button
@@ -375,7 +415,6 @@ const FaceEnrollment = () => {
           </Card>
         )}
 
-        {/* Success */}
         {enrolled && (
           <Card className="border-green-200 bg-green-50 dark:bg-green-950/20">
             <CardContent className="flex flex-col items-center gap-4 py-8">

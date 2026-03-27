@@ -1,23 +1,19 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import Layout from '@/components/Layout';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Separator } from '@/components/ui/separator';
 import { collection, getDocs, query, where, addDoc, orderBy, limit, Timestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/contexts/AuthContext';
 import {
   loadFaceModels,
-  detectAllFaces,
   arrayToDescriptor,
   matchFace,
 } from '@/lib/faceRecognitionService';
+import * as faceapi from 'face-api.js';
 import { formatLocalDate } from '@/lib/dateUtils';
 import { toast } from 'sonner';
+import { Toaster as Sonner } from '@/components/ui/sonner';
 import {
-  Camera,
   CheckCircle2,
   Loader2,
   AlertCircle,
@@ -25,7 +21,6 @@ import {
   Clock,
   LogIn,
   LogOut,
-  UserX,
 } from 'lucide-react';
 
 interface KnownFace {
@@ -43,7 +38,6 @@ interface AttendanceLog {
   time: string;
 }
 
-// Cooldown in ms – prevents duplicate punches within 60 seconds
 const PUNCH_COOLDOWN = 60_000;
 
 const FaceAttendance = () => {
@@ -58,12 +52,18 @@ const FaceAttendance = () => {
   const [cameraActive, setCameraActive] = useState(false);
   const [scanning, setScanning] = useState(false);
   const [knownFaces, setKnownFaces] = useState<KnownFace[]>([]);
-  const [statusMessage, setStatusMessage] = useState<string>('');
+  const [statusMessage, setStatusMessage] = useState('');
   const [statusType, setStatusType] = useState<'info' | 'success' | 'warning' | 'error'>('info');
   const [attendanceLogs, setAttendanceLogs] = useState<AttendanceLog[]>([]);
+  const [currentTime, setCurrentTime] = useState(new Date());
 
-  // Track recent punches to prevent duplicates
   const recentPunchesRef = useRef<Map<string, number>>(new Map());
+
+  // Live clock
+  useEffect(() => {
+    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   // Load models
   useEffect(() => {
@@ -73,7 +73,6 @@ const FaceAttendance = () => {
         setModelsReady(true);
       } catch (e) {
         console.error('Error loading models:', e);
-        toast.error('Failed to load face recognition models.');
       } finally {
         setLoadingModels(false);
       }
@@ -81,7 +80,7 @@ const FaceAttendance = () => {
     init();
   }, []);
 
-  // Load known face data
+  // Load known faces
   useEffect(() => {
     const loadFaces = async () => {
       if (!organizationId) return;
@@ -104,20 +103,24 @@ const FaceAttendance = () => {
     loadFaces();
   }, [organizationId]);
 
+  // Auto-start camera when models + faces are ready
   const startCamera = useCallback(async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { width: 640, height: 480, facingMode: 'user' },
+        video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: 'user' },
       });
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
         streamRef.current = stream;
-        setCameraActive(true);
-        setStatusMessage('Camera started. Scanning for faces...');
-        setStatusType('info');
+        videoRef.current.onloadeddata = () => {
+          setCameraActive(true);
+          setStatusMessage('Camera started. Scanning for faces...');
+          setStatusType('info');
+        };
       }
     } catch {
-      toast.error('Could not access camera.');
+      setStatusMessage('Could not access camera. Please allow camera permissions.');
+      setStatusType('error');
     }
   }, []);
 
@@ -132,10 +135,15 @@ const FaceAttendance = () => {
     }
     setCameraActive(false);
     setScanning(false);
-    setStatusMessage('');
   }, []);
 
-  // Determine punch type
+  // Auto-start camera
+  useEffect(() => {
+    if (modelsReady && knownFaces.length > 0 && !cameraActive) {
+      startCamera();
+    }
+  }, [modelsReady, knownFaces, cameraActive, startCamera]);
+
   const getPunchType = async (employeeId: string): Promise<'in' | 'out'> => {
     const today = formatLocalDate(new Date());
     try {
@@ -148,8 +156,7 @@ const FaceAttendance = () => {
       );
       const snap = await getDocs(q);
       if (snap.empty) return 'in';
-      const lastType = snap.docs[0].data().type;
-      return lastType === 'in' ? 'out' : 'in';
+      return snap.docs[0].data().type === 'in' ? 'out' : 'in';
     } catch {
       return 'in';
     }
@@ -158,7 +165,7 @@ const FaceAttendance = () => {
   const markAttendance = async (employeeId: string, employeeName: string, employeeCode: string) => {
     const now = Date.now();
     const lastPunch = recentPunchesRef.current.get(employeeId);
-    if (lastPunch && now - lastPunch < PUNCH_COOLDOWN) return; // cooldown active
+    if (lastPunch && now - lastPunch < PUNCH_COOLDOWN) return;
 
     recentPunchesRef.current.set(employeeId, now);
 
@@ -192,7 +199,6 @@ const FaceAttendance = () => {
       toast.success(`${employeeName} punched ${punchType} successfully`);
     } catch (e) {
       console.error('Error marking attendance:', e);
-      toast.error('Failed to mark attendance.');
     }
   };
 
@@ -203,17 +209,28 @@ const FaceAttendance = () => {
     setScanning(true);
 
     scanIntervalRef.current = setInterval(async () => {
-      if (!videoRef.current || videoRef.current.readyState !== 4) return;
+      if (!videoRef.current || videoRef.current.readyState < 4) return;
+      if (videoRef.current.videoWidth === 0) return;
 
       try {
-        const detections = await detectAllFaces(videoRef.current);
+        // Use canvas snapshot for reliable detection
+        const tempCanvas = document.createElement('canvas');
+        tempCanvas.width = videoRef.current.videoWidth;
+        tempCanvas.height = videoRef.current.videoHeight;
+        const tempCtx = tempCanvas.getContext('2d');
+        if (!tempCtx) return;
+        tempCtx.drawImage(videoRef.current, 0, 0);
 
-        // Draw detection overlay
+        const detections = await faceapi
+          .detectAllFaces(tempCanvas, new faceapi.SsdMobilenetv1Options({ minConfidence: 0.4 }))
+          .withFaceLandmarks()
+          .withFaceDescriptors();
+
+        // Draw overlay
         if (canvasRef.current && videoRef.current) {
           const canvas = canvasRef.current;
-          const video = videoRef.current;
-          canvas.width = video.videoWidth;
-          canvas.height = video.videoHeight;
+          canvas.width = videoRef.current.videoWidth;
+          canvas.height = videoRef.current.videoHeight;
           const ctx = canvas.getContext('2d');
           if (ctx) {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -228,38 +245,42 @@ const FaceAttendance = () => {
 
               if (matchResult) {
                 const known = knownFaces.find((kf) => kf.employeeId === matchResult.label);
+                // Green box for recognized
                 ctx.strokeStyle = '#22c55e';
                 ctx.lineWidth = 3;
                 ctx.strokeRect(x, y, width, height);
                 ctx.fillStyle = '#22c55e';
-                ctx.font = '14px sans-serif';
-                ctx.fillRect(x, y - 24, width, 24);
+                ctx.font = 'bold 16px sans-serif';
+                const label = known?.employeeName || 'Known';
+                const textWidth = ctx.measureText(label).width;
+                ctx.fillRect(x, y - 28, textWidth + 12, 28);
                 ctx.fillStyle = '#fff';
-                ctx.fillText(known?.employeeName || 'Known', x + 4, y - 6);
+                ctx.fillText(label, x + 6, y - 8);
 
                 if (known) {
                   markAttendance(known.employeeId, known.employeeName, known.employeeCode);
                 }
               } else {
+                // Red box for unknown
                 ctx.strokeStyle = '#ef4444';
                 ctx.lineWidth = 3;
                 ctx.strokeRect(x, y, width, height);
                 ctx.fillStyle = '#ef4444';
-                ctx.font = '14px sans-serif';
-                ctx.fillRect(x, y - 24, width, 24);
+                ctx.font = 'bold 16px sans-serif';
+                ctx.fillRect(x, y - 28, 100, 28);
                 ctx.fillStyle = '#fff';
-                ctx.fillText('Unknown', x + 4, y - 6);
+                ctx.fillText('Unknown', x + 6, y - 8);
               }
             }
           }
         }
 
         if (detections.length === 0) {
-          setStatusMessage('Scanning... No face detected.');
+          setStatusMessage('Scanning... Waiting for someone to approach.');
           setStatusType('info');
         }
       } catch (e) {
-        console.error('Scan error:', e);
+        console.warn('Scan frame error:', e);
       }
     }, 1500);
 
@@ -271,155 +292,159 @@ const FaceAttendance = () => {
   // Cleanup
   useEffect(() => () => stopCamera(), [stopCamera]);
 
-  const statusColors: Record<string, string> = {
-    info: 'bg-blue-50 text-blue-700 dark:bg-blue-950/20 dark:text-blue-300',
-    success: 'bg-green-50 text-green-700 dark:bg-green-950/20 dark:text-green-300',
-    warning: 'bg-amber-50 text-amber-700 dark:bg-amber-950/20 dark:text-amber-300',
-    error: 'bg-red-50 text-red-700 dark:bg-red-950/20 dark:text-red-300',
-  };
-
   return (
-    <Layout pageTitle="Face Attendance">
-      <div className="space-y-6 p-4 sm:p-6">
-        {/* Models Status */}
-        {loadingModels && (
-          <Card className="border-blue-200 bg-blue-50 dark:bg-blue-950/20">
-            <CardContent className="flex items-center gap-3 py-4">
-              <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
-              <span className="text-sm text-blue-700 dark:text-blue-300">
-                Loading face recognition models...
-              </span>
-            </CardContent>
-          </Card>
-        )}
+    <div className="h-screen w-screen bg-black text-white flex flex-col overflow-hidden">
+      <Sonner />
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Camera Panel */}
-          <div className="lg:col-span-2 space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <ScanFace className="h-5 w-5" />
-                  Real-Time Face Attendance
-                </CardTitle>
-                <CardDescription>
-                  The camera continuously scans and identifies employees to automatically mark attendance.
-                  {knownFaces.length > 0 && (
-                    <Badge variant="secondary" className="ml-2">
-                      {knownFaces.length} faces enrolled
-                    </Badge>
-                  )}
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {knownFaces.length === 0 && !loadingModels && (
-                  <div className="flex items-center gap-2 text-sm text-amber-600 bg-amber-50 dark:bg-amber-950/20 p-3 rounded-lg">
-                    <AlertCircle className="h-4 w-4 flex-shrink-0" />
-                    No enrolled faces found. Please enroll employees first via Face Enrollment.
-                  </div>
-                )}
-
-                {/* Camera View */}
-                <div className="relative aspect-video bg-black rounded-lg overflow-hidden">
-                  <video
-                    ref={videoRef}
-                    autoPlay
-                    playsInline
-                    muted
-                    className="w-full h-full object-cover"
-                    style={{ transform: 'scaleX(-1)' }}
-                  />
-                  <canvas
-                    ref={canvasRef}
-                    className="absolute inset-0 w-full h-full"
-                    style={{ transform: 'scaleX(-1)' }}
-                  />
-
-                  {!cameraActive && (
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <Button
-                        onClick={startCamera}
-                        size="lg"
-                        className="gap-2"
-                        disabled={!modelsReady || knownFaces.length === 0}
-                      >
-                        <Camera className="h-5 w-5" />
-                        Start Attendance Scanner
-                      </Button>
-                    </div>
-                  )}
-
-                  {cameraActive && scanning && (
-                    <div className="absolute top-3 left-3">
-                      <Badge className="gap-1 bg-green-600">
-                        <Loader2 className="h-3 w-3 animate-spin" />
-                        Scanning...
-                      </Badge>
-                    </div>
-                  )}
-                </div>
-
-                {cameraActive && (
-                  <Button variant="destructive" onClick={stopCamera} className="w-full">
-                    Stop Scanner
-                  </Button>
-                )}
-
-                {/* Status Message */}
-                {statusMessage && (
-                  <div className={`p-3 rounded-lg text-sm ${statusColors[statusType]}`}>
-                    {statusMessage}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Attendance Log */}
-          <div>
-            <Card className="h-full">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-base">
-                  <Clock className="h-4 w-4" />
-                  Today's Log
-                </CardTitle>
-                <CardDescription>Real-time attendance entries</CardDescription>
-              </CardHeader>
-              <CardContent>
-                {attendanceLogs.length === 0 ? (
-                  <p className="text-sm text-muted-foreground text-center py-8">
-                    No entries yet. Start scanning to mark attendance.
-                  </p>
-                ) : (
-                  <ScrollArea className="h-[400px]">
-                    <div className="space-y-3">
-                      {attendanceLogs.map((log) => (
-                        <div key={log.id} className="flex items-center gap-3 text-sm">
-                          {log.type === 'in' ? (
-                            <LogIn className="h-4 w-4 text-green-600 flex-shrink-0" />
-                          ) : (
-                            <LogOut className="h-4 w-4 text-red-600 flex-shrink-0" />
-                          )}
-                          <div className="flex-1 min-w-0">
-                            <p className="font-medium truncate">{log.employeeName}</p>
-                            <p className="text-xs text-muted-foreground">
-                              {log.employeeCode} • {log.time}
-                            </p>
-                          </div>
-                          <Badge variant={log.type === 'in' ? 'default' : 'secondary'} className="text-xs">
-                            {log.type === 'in' ? 'IN' : 'OUT'}
-                          </Badge>
-                        </div>
-                      ))}
-                    </div>
-                  </ScrollArea>
-                )}
-              </CardContent>
-            </Card>
+      {/* Top Bar */}
+      <div className="flex items-center justify-between px-6 py-3 bg-gray-900 border-b border-gray-800 shrink-0">
+        <div className="flex items-center gap-3">
+          <ScanFace className="h-6 w-6 text-primary" />
+          <h1 className="text-lg font-bold">Face Attendance</h1>
+          {knownFaces.length > 0 && (
+            <Badge variant="secondary" className="text-xs">
+              {knownFaces.length} enrolled
+            </Badge>
+          )}
+        </div>
+        <div className="flex items-center gap-4">
+          {scanning && (
+            <Badge className="gap-1 bg-green-600 text-white">
+              <Loader2 className="h-3 w-3 animate-spin" />
+              Scanning
+            </Badge>
+          )}
+          <div className="text-right">
+            <div className="text-2xl font-mono font-bold">
+              {currentTime.toLocaleTimeString()}
+            </div>
+            <div className="text-xs text-gray-400">
+              {currentTime.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+            </div>
           </div>
         </div>
       </div>
-    </Layout>
+
+      {/* Loading state */}
+      {loadingModels && (
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center space-y-4">
+            <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto" />
+            <p className="text-lg text-gray-300">Loading face recognition models...</p>
+          </div>
+        </div>
+      )}
+
+      {/* No faces enrolled */}
+      {!loadingModels && modelsReady && knownFaces.length === 0 && (
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center space-y-4 max-w-md">
+            <AlertCircle className="h-16 w-16 text-amber-500 mx-auto" />
+            <h2 className="text-xl font-semibold">No Faces Enrolled</h2>
+            <p className="text-gray-400">
+              Please enroll employee faces from the admin panel before using this attendance scanner.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Main Content */}
+      {!loadingModels && modelsReady && knownFaces.length > 0 && (
+        <div className="flex-1 flex min-h-0">
+          {/* Camera Area */}
+          <div className="flex-1 relative">
+            <video
+              ref={videoRef}
+              autoPlay
+              playsInline
+              muted
+              className="w-full h-full object-cover"
+              style={{ transform: 'scaleX(-1)' }}
+            />
+            <canvas
+              ref={canvasRef}
+              className="absolute inset-0 w-full h-full"
+              style={{ transform: 'scaleX(-1)' }}
+            />
+
+            {/* Status Overlay */}
+            {statusMessage && (
+              <div className="absolute bottom-6 left-1/2 -translate-x-1/2">
+                <div className={`px-6 py-3 rounded-full text-sm font-medium backdrop-blur-sm shadow-lg ${
+                  statusType === 'success' ? 'bg-green-600/90 text-white' :
+                  statusType === 'error' ? 'bg-red-600/90 text-white' :
+                  'bg-gray-800/90 text-gray-200'
+                }`}>
+                  {statusMessage}
+                </div>
+              </div>
+            )}
+
+            {/* Center guide overlay when no face detected */}
+            {cameraActive && !scanning && (
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="border-2 border-dashed border-white/30 rounded-2xl w-64 h-80 flex items-center justify-center">
+                  <p className="text-white/50 text-sm">Position your face here</p>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Attendance Log Sidebar */}
+          <div className="w-80 bg-gray-900 border-l border-gray-800 flex flex-col shrink-0">
+            <div className="px-4 py-3 border-b border-gray-800">
+              <div className="flex items-center gap-2">
+                <Clock className="h-4 w-4 text-gray-400" />
+                <span className="font-semibold text-sm">Today's Attendance Log</span>
+              </div>
+            </div>
+
+            {attendanceLogs.length === 0 ? (
+              <div className="flex-1 flex items-center justify-center p-4">
+                <p className="text-sm text-gray-500 text-center">
+                  No entries yet. Stand in front of the camera to mark attendance.
+                </p>
+              </div>
+            ) : (
+              <ScrollArea className="flex-1">
+                <div className="p-3 space-y-2">
+                  {attendanceLogs.map((log) => (
+                    <div key={log.id} className="flex items-center gap-3 p-3 rounded-lg bg-gray-800/50 text-sm">
+                      {log.type === 'in' ? (
+                        <div className="h-8 w-8 rounded-full bg-green-600/20 flex items-center justify-center shrink-0">
+                          <LogIn className="h-4 w-4 text-green-400" />
+                        </div>
+                      ) : (
+                        <div className="h-8 w-8 rounded-full bg-red-600/20 flex items-center justify-center shrink-0">
+                          <LogOut className="h-4 w-4 text-red-400" />
+                        </div>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium truncate text-white">{log.employeeName}</p>
+                        <p className="text-xs text-gray-400">
+                          {log.employeeCode} • {log.time}
+                        </p>
+                      </div>
+                      <Badge
+                        className={`text-xs ${log.type === 'in' ? 'bg-green-600/20 text-green-400 border-green-600/30' : 'bg-red-600/20 text-red-400 border-red-600/30'}`}
+                      >
+                        {log.type === 'in' ? 'IN' : 'OUT'}
+                      </Badge>
+                    </div>
+                  ))}
+                </div>
+              </ScrollArea>
+            )}
+
+            <div className="px-4 py-3 border-t border-gray-800 text-center">
+              <p className="text-xs text-gray-500">
+                {attendanceLogs.length} entries today • 60s cooldown between punches
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
   );
 };
 
