@@ -118,6 +118,7 @@ const FaceAttendance = () => {
               employeeId: data.employeeId,
               employeeName: data.employeeName,
               employeeCode: data.employeeCode,
+              userId: data.userId || '',
               descriptors: normalizeStoredDescriptors(data.descriptors),
             };
           })
