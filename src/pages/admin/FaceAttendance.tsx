@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { collection, getDocs, query, where, addDoc, orderBy, limit, Timestamp } from 'firebase/firestore';
+import { collection, getDocs, query, where, addDoc, updateDoc, doc, orderBy, limit, Timestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/contexts/AuthContext';
 import {
