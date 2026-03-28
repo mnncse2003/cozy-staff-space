@@ -30,6 +30,29 @@ interface KnownFace {
   descriptors: Float32Array[];
 }
 
+const normalizeStoredDescriptors = (descriptors: unknown): Float32Array[] => {
+  if (!Array.isArray(descriptors)) return [];
+
+  return descriptors
+    .map((item: unknown) => {
+      if (Array.isArray(item)) {
+        return arrayToDescriptor(item as number[]);
+      }
+
+      if (
+        item &&
+        typeof item === 'object' &&
+        'values' in item &&
+        Array.isArray((item as { values?: unknown }).values)
+      ) {
+        return arrayToDescriptor((item as { values: number[] }).values);
+      }
+
+      return null;
+    })
+    .filter((descriptor): descriptor is Float32Array => descriptor !== null);
+};
+
 interface AttendanceLog {
   id: string;
   employeeName: string;
@@ -88,13 +111,16 @@ const FaceAttendance = () => {
         const q = query(collection(db, 'face_data'), where('organizationId', '==', organizationId));
         const snapshot = await getDocs(q);
         const faces: KnownFace[] = snapshot.docs
-          .filter((d) => d.data().descriptors?.length > 0)
-          .map((d) => ({
-            employeeId: d.data().employeeId,
-            employeeName: d.data().employeeName,
-            employeeCode: d.data().employeeCode,
-            descriptors: d.data().descriptors.map((arr: number[]) => arrayToDescriptor(arr)),
-          }));
+          .map((d) => {
+            const data = d.data();
+            return {
+              employeeId: data.employeeId,
+              employeeName: data.employeeName,
+              employeeCode: data.employeeCode,
+              descriptors: normalizeStoredDescriptors(data.descriptors),
+            };
+          })
+          .filter((face) => face.descriptors.length > 0);
         setKnownFaces(faces);
       } catch (e) {
         console.error('Error loading face data:', e);
