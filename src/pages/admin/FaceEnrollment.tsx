@@ -44,6 +44,7 @@ const FaceEnrollment = () => {
           id: d.id,
           name: d.data().name || d.data().fullName || `${d.data().firstName || ''} ${d.data().lastName || ''}`.trim(),
           employeeCode: d.data().employeeCode || d.data().employeeId || '',
+          userId: d.data().userId || '',
         }));
         setEmployees(emps);
       } catch (e) {
