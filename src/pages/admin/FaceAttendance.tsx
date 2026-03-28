@@ -325,7 +325,7 @@ const FaceAttendance = () => {
                 ctx.fillText(label, x + 6, y - 8);
 
                 if (known) {
-                  markAttendance(known.employeeId, known.employeeName, known.employeeCode);
+                  markAttendance(known.employeeId, known.employeeName, known.employeeCode, known.userId);
                 }
               } else {
                 // Red box for unknown
