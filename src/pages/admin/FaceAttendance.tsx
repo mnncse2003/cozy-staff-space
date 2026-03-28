@@ -27,6 +27,7 @@ interface KnownFace {
   employeeId: string;
   employeeName: string;
   employeeCode: string;
+  userId: string;
   descriptors: Float32Array[];
 }
 

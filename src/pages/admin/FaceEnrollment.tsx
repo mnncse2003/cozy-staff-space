@@ -248,6 +248,7 @@ const FaceEnrollment = () => {
         employeeId: selectedEmployeeId,
         employeeName: emp?.name || '',
         employeeCode: emp?.employeeCode || '',
+        userId: emp?.userId || '',
         organizationId,
         descriptors: existingDescriptors,
         enrolledAt: existing.exists() ? existing.data().enrolledAt : new Date().toISOString(),
