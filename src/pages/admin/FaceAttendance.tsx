@@ -190,7 +190,7 @@ const FaceAttendance = () => {
     }
   };
 
-  const markAttendance = async (employeeId: string, employeeName: string, employeeCode: string) => {
+  const markAttendance = async (employeeId: string, employeeName: string, employeeCode: string, userId: string) => {
     const now = Date.now();
     const lastPunch = recentPunchesRef.current.get(employeeId);
     if (lastPunch && now - lastPunch < PUNCH_COOLDOWN) return;
@@ -200,8 +200,10 @@ const FaceAttendance = () => {
     const punchType = await getPunchType(employeeId);
     const today = formatLocalDate(new Date());
     const timeStr = new Date().toLocaleTimeString();
+    const isoTime = new Date().toISOString();
 
     try {
+      // 1. Log to face_attendance collection
       await addDoc(collection(db, 'face_attendance'), {
         employeeId,
         employeeName,
@@ -212,6 +214,43 @@ const FaceAttendance = () => {
         timestamp: Timestamp.now(),
         type: punchType,
       });
+
+      // 2. Sync with main attendance collection
+      const attendanceUserId = userId || employeeId;
+      const attendanceQuery = query(
+        collection(db, 'attendance'),
+        where('employeeId', '==', attendanceUserId),
+        where('date', '==', today)
+      );
+      const attendanceSnap = await getDocs(attendanceQuery);
+
+      if (punchType === 'in') {
+        // Create new attendance record for punch-in
+        if (attendanceSnap.empty) {
+          await addDoc(collection(db, 'attendance'), {
+            employeeId: attendanceUserId,
+            employeeDocumentId: employeeId,
+            employeeName,
+            employeeCode,
+            date: today,
+            punchIn: isoTime,
+            punchInLocation: null,
+            punchOut: null,
+            punchOutLocation: null,
+            organizationId: organizationId || null,
+            source: 'face_recognition',
+          });
+        }
+      } else {
+        // Update existing attendance record with punch-out
+        if (!attendanceSnap.empty) {
+          const attendanceDoc = attendanceSnap.docs[0];
+          await updateDoc(doc(db, 'attendance', attendanceDoc.id), {
+            punchOut: isoTime,
+            punchOutLocation: null,
+          });
+        }
+      }
 
       const logEntry: AttendanceLog = {
         id: `${employeeId}-${now}`,
