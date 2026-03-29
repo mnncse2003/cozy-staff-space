@@ -47,6 +47,10 @@ const normalizeStoredDescriptors = (descriptors: unknown): Float32Array[] => {
 const PUNCH_COOLDOWN = 60_000;
 const MIN_FACE_SIZE = 120; // minimum face box width to consider "close enough"
 const RESULT_DISPLAY_DURATION = 4000;
+const PUNCH_DURATION = 10*60*1000; // 10MIN 
+
+
+N
 
 type ResultState = {
   type: 'success' | 'not_found' | 'too_far';
@@ -55,7 +59,7 @@ type ResultState = {
   photoURL?: string;
 } | null;
 
-const speak = (text: string) => {
+-const speak = (text: string) => {
   if ('speechSynthesis' in window) {
     window.speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(text);
@@ -65,6 +69,12 @@ const speak = (text: string) => {
     window.speechSynthesis.speak(utterance);
   }
 };
+
+const canPunchOut =(punchTime:Date|null):{allowed:boolean;remainingMinutes:number}=>{
+// Calculate time elapsed since punch in
+// Return allowed: false if less then 10 minutes haves passed
+// Return remaining minutes untill punch out is allowed
+}
 
 const FaceAttendance = () => {
   const { organizationId } = useAuth();
