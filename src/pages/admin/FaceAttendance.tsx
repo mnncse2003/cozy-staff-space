@@ -70,11 +70,11 @@ type ResultState = {
   }
 };
 
-const canPunchOut =(punchTime:Date|null):{allowed:boolean;remainingMinutes:number}=>{
+//const canPunchOut =(punchTime:Date|null):{allowed:boolean;remainingMinutes:number}=>{
 // Calculate time elapsed since punch in
 // Return allowed: false if less then 10 minutes haves passed
 // Return remaining minutes untill punch out is allowed
-}
+//}
 
 const FaceAttendance = () => {
   const { organizationId } = useAuth();
