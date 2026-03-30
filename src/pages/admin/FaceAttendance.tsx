@@ -20,6 +20,8 @@ import {
   Clock,
   UserX,
   ZoomIn,
+  LogOut,
+  AlertTriangle,
 } from 'lucide-react';
 
 interface KnownFace {
@@ -29,6 +31,15 @@ interface KnownFace {
   userId: string;
   descriptors: Float32Array[];
   photoURL?: string;
+}
+
+interface AttendanceRecord {
+  id: string;
+  employeeId: string;
+  date: string;
+  punchIn: string | null;
+  punchOut: string | null;
+  source?: string;
 }
 
 const normalizeStoredDescriptors = (descriptors: unknown): Float32Array[] => {
@@ -44,22 +55,22 @@ const normalizeStoredDescriptors = (descriptors: unknown): Float32Array[] => {
     .filter((d): d is Float32Array => d !== null);
 };
 
-const PUNCH_COOLDOWN = 60_000;
+const PUNCH_COOLDOWN = 2000; // 2 seconds cooldown between scans to prevent duplicate processing
+const MIN_PUNCH_DURATION = 10 * 60 * 1000; // 10 minutes minimum between punch in and punch out
+const RESULT_DISPLAY_DURATION = 5000; // 5 seconds for error messages
 const MIN_FACE_SIZE = 120; // minimum face box width to consider "close enough"
-const RESULT_DISPLAY_DURATION = 4000;
-const PUNCH_DURATION = 10*60*1000; // 10MIN 
-
-
-N
 
 type ResultState = {
-  type: 'success' | 'not_found' | 'too_far';
+  type: 'success' | 'not_found' | 'too_far' | 'already_punched_in' | 'already_punched_out' | 'too_early_to_punch_out' | 'no_punch_in';
   employeeName?: string;
   employeeCode?: string;
   photoURL?: string;
+  punchType?: 'in' | 'out';
+  message?: string;
+  remainingMinutes?: number;
 } | null;
 
--const speak = (text: string) => {
+const speak = (text: string) => {
   if ('speechSynthesis' in window) {
     window.speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(text);
@@ -69,12 +80,6 @@ type ResultState = {
     window.speechSynthesis.speak(utterance);
   }
 };
-
-//const canPunchOut =(punchTime:Date|null):{allowed:boolean;remainingMinutes:number}=>{
-// Calculate time elapsed since punch in
-// Return allowed: false if less then 10 minutes haves passed
-// Return remaining minutes untill punch out is allowed
-//}
 
 const FaceAttendance = () => {
   const { organizationId } = useAuth();
@@ -92,13 +97,17 @@ const FaceAttendance = () => {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [result, setResult] = useState<ResultState>(null);
 
-  const recentPunchesRef = useRef<Map<string, number>>(new Map());
-  const notFoundCooldownRef = useRef(0);
+  const processingRef = useRef<Set<string>>(new Set()); // Track employees being processed
+  const lastScanTimeRef = useRef<Map<string, number>>(new Map()); // Track last scan time per employee
+  const lastPunchOutAttemptRef = useRef<Map<string, number>>(new Map()); // Track last punch out attempt
 
   const showResult = useCallback((r: ResultState) => {
     if (resultTimeoutRef.current) clearTimeout(resultTimeoutRef.current);
     setResult(r);
-    resultTimeoutRef.current = setTimeout(() => setResult(null), RESULT_DISPLAY_DURATION);
+    
+    // Longer timeout for error messages
+    const duration = r.type === 'success' ? RESULT_DISPLAY_DURATION : RESULT_DISPLAY_DURATION;
+    resultTimeoutRef.current = setTimeout(() => setResult(null), duration);
   }, []);
 
   // Live clock
@@ -182,102 +191,281 @@ const FaceAttendance = () => {
     if (modelsReady && knownFaces.length > 0 && !cameraActive) startCamera();
   }, [modelsReady, knownFaces, cameraActive, startCamera]);
 
-  const getPunchType = async (employeeId: string): Promise<'in' | 'out'> => {
+  // Get today's attendance record from the main attendance collection
+  const getTodayAttendance = async (employeeUserId: string, employeeId: string): Promise<AttendanceRecord | null> => {
     const today = formatLocalDate(new Date());
     try {
-      const q = query(
-        collection(db, 'face_attendance'),
-        where('employeeId', '==', employeeId),
-        where('date', '==', today),
-        orderBy('timestamp', 'desc'),
-        limit(1)
-      );
-      const snap = await getDocs(q);
-      if (snap.empty) return 'in';
-      return snap.docs[0].data().type === 'in' ? 'out' : 'in';
-    } catch {
-      return 'in';
-    }
-  };
-
-  const markAttendance = async (known: KnownFace) => {
-    const now = Date.now();
-    const lastPunch = recentPunchesRef.current.get(known.employeeId);
-    if (lastPunch && now - lastPunch < PUNCH_COOLDOWN) return;
-
-    recentPunchesRef.current.set(known.employeeId, now);
-
-    const punchType = await getPunchType(known.employeeId);
-    const today = formatLocalDate(new Date());
-    const isoTime = new Date().toISOString();
-    const timeStr = new Date().toLocaleTimeString();
-
-    try {
-      await addDoc(collection(db, 'face_attendance'), {
-        employeeId: known.employeeId,
-        employeeName: known.employeeName,
-        employeeCode: known.employeeCode,
-        organizationId,
-        date: today,
-        time: timeStr,
-        timestamp: Timestamp.now(),
-        type: punchType,
-      });
-
-      const attendanceUserId = known.userId || known.employeeId;
-      const attendanceQuery = query(
+      // Try to find by userId first (for web/mobile punches)
+      let q = query(
         collection(db, 'attendance'),
-        where('employeeId', '==', attendanceUserId),
+        where('employeeId', '==', employeeUserId),
         where('date', '==', today)
       );
-      const attendanceSnap = await getDocs(attendanceQuery);
-
-      if (punchType === 'in') {
-        if (attendanceSnap.empty) {
-          await addDoc(collection(db, 'attendance'), {
-            employeeId: attendanceUserId,
-            employeeDocumentId: known.employeeId,
-            employeeName: known.employeeName,
-            employeeCode: known.employeeCode,
-            date: today,
-            punchIn: isoTime,
-            punchInLocation: null,
-            punchOut: null,
-            punchOutLocation: null,
-            organizationId: organizationId || null,
-            source: 'face_recognition',
-          });
-        }
-      } else {
-        if (!attendanceSnap.empty) {
-          const attendanceDoc = attendanceSnap.docs[0];
-          await updateDoc(doc(db, 'attendance', attendanceDoc.id), {
-            punchOut: isoTime,
-            punchOutLocation: null,
-          });
-        }
+      let snapshot = await getDocs(q);
+      
+      // If not found, try by employeeDocumentId (for face recognition)
+      if (snapshot.empty) {
+        q = query(
+          collection(db, 'attendance'),
+          where('employeeDocumentId', '==', employeeId),
+          where('date', '==', today)
+        );
+        snapshot = await getDocs(q);
       }
-
-      showResult({
-        type: 'success',
-        employeeName: known.employeeName,
-        employeeCode: known.employeeCode,
-        photoURL: known.photoURL,
-      });
-      speak(`Thank you, ${known.employeeName}. Punch ${punchType} recorded.`);
-    } catch (e) {
-      console.error('Error marking attendance:', e);
+      
+      if (!snapshot.empty) {
+        const doc = snapshot.docs[0];
+        return {
+          id: doc.id,
+          ...doc.data()
+        } as AttendanceRecord;
+      }
+      return null;
+    } catch (error) {
+      console.error('Error fetching today attendance:', error);
+      return null;
     }
   };
 
+  // Get the current attendance status
+  const getAttendanceStatus = async (employeeUserId: string, employeeId: string): Promise<{
+    hasPunchIn: boolean;
+    hasPunchOut: boolean;
+    attendanceRecord: AttendanceRecord | null;
+    punchInTime: Date | null;
+    punchOutTime: Date | null;
+    minutesSincePunchIn: number | null;
+  }> => {
+    const attendance = await getTodayAttendance(employeeUserId, employeeId);
+    
+    if (!attendance || !attendance.punchIn) {
+      return {
+        hasPunchIn: false,
+        hasPunchOut: false,
+        attendanceRecord: null,
+        punchInTime: null,
+        punchOutTime: null,
+        minutesSincePunchIn: null,
+      };
+    }
+    
+    const punchInTime = new Date(attendance.punchIn);
+    const now = new Date();
+    const minutesSincePunchIn = (now.getTime() - punchInTime.getTime()) / (1000 * 60);
+    
+    return {
+      hasPunchIn: true,
+      hasPunchOut: attendance.punchOut !== null,
+      attendanceRecord: attendance,
+      punchInTime,
+      punchOutTime: attendance.punchOut ? new Date(attendance.punchOut) : null,
+      minutesSincePunchIn,
+    };
+  };
+
+  // Check if user can punch out (must be at least 10 minutes after punch in)
+  const canPunchOut = (punchInTime: Date | null): { allowed: boolean; remainingMinutes: number } => {
+    if (!punchInTime) {
+      return { allowed: false, remainingMinutes: 0 };
+    }
+    
+    const now = new Date();
+    const timeDifference = now.getTime() - punchInTime.getTime();
+    const minutesElapsed = Math.floor(timeDifference / (1000 * 60));
+    
+    if (timeDifference >= MIN_PUNCH_DURATION) {
+      return { allowed: true, remainingMinutes: 0 };
+    }
+    
+    const remainingMinutes = Math.ceil((MIN_PUNCH_DURATION - timeDifference) / (1000 * 60));
+    return { allowed: false, remainingMinutes };
+  };
+
+  const handlePunchIn = async (known: KnownFace) => {
+    const today = formatLocalDate(new Date());
+    const isoTime = new Date().toISOString();
+    const attendanceUserId = known.userId || known.employeeId;
+    
+    // Create attendance record
+    await addDoc(collection(db, 'attendance'), {
+      employeeId: attendanceUserId,
+      employeeDocumentId: known.employeeId,
+      employeeName: known.employeeName,
+      employeeCode: known.employeeCode,
+      date: today,
+      punchIn: isoTime,
+      punchInLocation: null,
+      punchOut: null,
+      punchOutLocation: null,
+      organizationId: organizationId || null,
+      source: 'face_recognition',
+    });
+  };
+
+  const handlePunchOut = async (known: KnownFace, attendanceRecord: AttendanceRecord) => {
+    const isoTime = new Date().toISOString();
+    
+    await updateDoc(doc(db, 'attendance', attendanceRecord.id), {
+      punchOut: isoTime,
+      punchOutLocation: null,
+    });
+  };
+
+  const processAttendance = async (known: KnownFace) => {
+    const now = Date.now();
+    const employeeId = known.employeeId;
+    const attendanceUserId = known.userId || known.employeeId;
+    
+    // Prevent multiple concurrent processing for same employee
+    if (processingRef.current.has(employeeId)) {
+      console.log(`Already processing ${employeeId}, skipping...`);
+      return;
+    }
+    
+    // Check cooldown to prevent processing the same face too frequently
+    const lastScanTime = lastScanTimeRef.current.get(employeeId);
+    if (lastScanTime && now - lastScanTime < PUNCH_COOLDOWN) {
+      console.log(`Cooldown active for ${employeeId}`);
+      return;
+    }
+    
+    processingRef.current.add(employeeId);
+    lastScanTimeRef.current.set(employeeId, now);
+    
+    try {
+      // Get current attendance status from database
+      const { hasPunchIn, hasPunchOut, attendanceRecord, punchInTime, minutesSincePunchIn } = 
+        await getAttendanceStatus(attendanceUserId, employeeId);
+      
+      console.log(`Attendance status for ${known.employeeName}:`, {
+        hasPunchIn,
+        hasPunchOut,
+        punchInTime: punchInTime?.toLocaleTimeString(),
+        minutesSincePunchIn,
+      });
+      
+      // Case 1: Already punched out for today
+      if (hasPunchOut) {
+        // Check if it's been more than 10 minutes since last punch out attempt
+        const lastPunchOutAttempt = lastPunchOutAttemptRef.current.get(employeeId);
+        if (!lastPunchOutAttempt || now - lastPunchOutAttempt > 10000) { // 10 second cooldown for showing message
+          lastPunchOutAttemptRef.current.set(employeeId, now);
+          showResult({
+            type: 'already_punched_out',
+            employeeName: known.employeeName,
+            employeeCode: known.employeeCode,
+            photoURL: known.photoURL,
+            punchType: 'out',
+            message: 'You have already completed your work day',
+          });
+          speak(`${known.employeeName}, you have already punched out for today. See you tomorrow!`);
+        }
+        return;
+      }
+      
+      // Case 2: Has punched in and not punched out yet
+      if (hasPunchIn && attendanceRecord && !hasPunchOut) {
+        // Check if enough time has passed since punch in
+        const { allowed, remainingMinutes } = canPunchOut(punchInTime);
+        
+        if (!allowed) {
+          // Prevent punch out - too early
+          const lastPunchOutAttempt = lastPunchOutAttemptRef.current.get(employeeId);
+          if (!lastPunchOutAttempt || now - lastPunchOutAttempt > 10000) {
+            lastPunchOutAttemptRef.current.set(employeeId, now);
+            showResult({
+              type: 'too_early_to_punch_out',
+              employeeName: known.employeeName,
+              employeeCode: known.employeeCode,
+              photoURL: known.photoURL,
+              punchType: 'out',
+              message: `Please wait ${remainingMinutes} more minute${remainingMinutes !== 1 ? 's' : ''} before punching out`,
+              remainingMinutes,
+            });
+            speak(`${known.employeeName}, you punched in at ${punchInTime?.toLocaleTimeString()}. Please wait ${remainingMinutes} more minutes before punching out.`);
+          }
+          return;
+        }
+        
+        // Perform punch out
+        await handlePunchOut(known, attendanceRecord);
+        
+        // Record in face_attendance collection
+        const today = formatLocalDate(new Date());
+        await addDoc(collection(db, 'face_attendance'), {
+          employeeId: known.employeeId,
+          employeeName: known.employeeName,
+          employeeCode: known.employeeCode,
+          organizationId,
+          date: today,
+          time: new Date().toLocaleTimeString(),
+          timestamp: Timestamp.now(),
+          type: 'out',
+        });
+        
+        showResult({
+          type: 'success',
+          employeeName: known.employeeName,
+          employeeCode: known.employeeCode,
+          photoURL: known.photoURL,
+          punchType: 'out',
+        });
+        speak(`Thank you, ${known.employeeName}. You worked for ${Math.floor(minutesSincePunchIn!)} minutes. Punch out recorded. Have a great day!`);
+        return;
+      }
+      
+      // Case 3: No punch in yet today
+      if (!hasPunchIn) {
+        // Check for duplicate punch in attempts
+        const lastPunchOutAttempt = lastPunchOutAttemptRef.current.get(employeeId);
+        if (!lastPunchOutAttempt || now - lastPunchOutAttempt > 10000) {
+          // Perform punch in
+          await handlePunchIn(known);
+          
+          // Record in face_attendance collection
+          const today = formatLocalDate(new Date());
+          await addDoc(collection(db, 'face_attendance'), {
+            employeeId: known.employeeId,
+            employeeName: known.employeeName,
+            employeeCode: known.employeeCode,
+            organizationId,
+            date: today,
+            time: new Date().toLocaleTimeString(),
+            timestamp: Timestamp.now(),
+            type: 'in',
+          });
+          
+          showResult({
+            type: 'success',
+            employeeName: known.employeeName,
+            employeeCode: known.employeeCode,
+            photoURL: known.photoURL,
+            punchType: 'in',
+          });
+          speak(`Welcome, ${known.employeeName}. Punch in recorded at ${new Date().toLocaleTimeString()}. Have a great day!`);
+        }
+        return;
+      }
+      
+      // Case 4: Should not reach here, but handle gracefully
+      console.log('Unexpected attendance state:', { hasPunchIn, hasPunchOut });
+      
+    } catch (e) {
+      console.error('Error processing attendance:', e);
+      toast.error('Failed to process attendance');
+    } finally {
+      processingRef.current.delete(employeeId);
+    }
+  };
+  
   // Continuous face scanning
   useEffect(() => {
     if (!cameraActive || !modelsReady || knownFaces.length === 0) return;
     setScanning(true);
-
+    
     scanIntervalRef.current = setInterval(async () => {
       if (!videoRef.current || videoRef.current.readyState < 4 || videoRef.current.videoWidth === 0) return;
-
+      
       try {
         const tempCanvas = document.createElement('canvas');
         tempCanvas.width = videoRef.current.videoWidth;
@@ -285,12 +473,12 @@ const FaceAttendance = () => {
         const tempCtx = tempCanvas.getContext('2d');
         if (!tempCtx) return;
         tempCtx.drawImage(videoRef.current, 0, 0);
-
+        
         const detections = await faceapi
           .detectAllFaces(tempCanvas, new faceapi.SsdMobilenetv1Options({ minConfidence: 0.4 }))
           .withFaceLandmarks()
           .withFaceDescriptors();
-
+        
         // Draw overlay
         if (canvasRef.current && videoRef.current) {
           const canvas = canvasRef.current;
@@ -299,42 +487,36 @@ const FaceAttendance = () => {
           const ctx = canvas.getContext('2d');
           if (ctx) {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
             for (const det of detections) {
               const { x, y, width, height } = det.detection.box;
-
+              
               // Check if face is too far
               if (width < MIN_FACE_SIZE) {
                 ctx.strokeStyle = '#f59e0b';
                 ctx.lineWidth = 3;
                 ctx.strokeRect(x, y, width, height);
-                if (Date.now() - notFoundCooldownRef.current > 3000) {
-                  notFoundCooldownRef.current = Date.now();
-                  showResult({ type: 'too_far' });
-                  speak('Please come closer to the camera.');
-                }
                 continue;
               }
-
+              
               const matchResult = matchFace(
                 det.descriptor,
                 knownFaces.map((kf) => ({ label: kf.employeeId, descriptors: kf.descriptors }))
               );
-
+              
               if (matchResult) {
                 const known = knownFaces.find((kf) => kf.employeeId === matchResult.label);
                 ctx.strokeStyle = '#22c55e';
                 ctx.lineWidth = 3;
                 ctx.strokeRect(x, y, width, height);
-                if (known) markAttendance(known);
+                
+                if (known) {
+                  await processAttendance(known);
+                }
               } else {
                 ctx.strokeStyle = '#ef4444';
                 ctx.lineWidth = 3;
                 ctx.strokeRect(x, y, width, height);
-                if (Date.now() - notFoundCooldownRef.current > 5000) {
-                  notFoundCooldownRef.current = Date.now();
-                  showResult({ type: 'not_found' });
-                  speak('User not found. Please contact HR.');
-                }
               }
             }
           }
@@ -342,19 +524,19 @@ const FaceAttendance = () => {
       } catch (e) {
         console.warn('Scan frame error:', e);
       }
-    }, 1500);
-
+    }, 3000); // Scan every 3 seconds to reduce load
+    
     return () => {
       if (scanIntervalRef.current) clearInterval(scanIntervalRef.current);
     };
   }, [cameraActive, modelsReady, knownFaces, organizationId]);
-
+  
   useEffect(() => () => stopCamera(), [stopCamera]);
-
+  
   return (
     <div className="h-screen w-screen bg-black text-white flex flex-col overflow-hidden">
       <Sonner />
-
+      
       {/* Top Bar */}
       <div className="flex items-center justify-between px-3 sm:px-6 py-2 sm:py-3 bg-gray-900 border-b border-gray-800 shrink-0">
         <div className="flex items-center gap-2 sm:gap-3">
@@ -376,7 +558,7 @@ const FaceAttendance = () => {
           </div>
         </div>
       </div>
-
+      
       {/* Loading state */}
       {loadingModels && (
         <div className="flex-1 flex items-center justify-center">
@@ -386,7 +568,7 @@ const FaceAttendance = () => {
           </div>
         </div>
       )}
-
+      
       {/* No faces enrolled */}
       {!loadingModels && modelsReady && knownFaces.length === 0 && (
         <div className="flex-1 flex items-center justify-center px-4">
@@ -399,7 +581,7 @@ const FaceAttendance = () => {
           </div>
         </div>
       )}
-
+      
       {/* Main Content - Camera */}
       {!loadingModels && modelsReady && knownFaces.length > 0 && (
         <div className="flex-1 relative min-h-0">
@@ -416,22 +598,37 @@ const FaceAttendance = () => {
             className="absolute inset-0 w-full h-full"
             style={{ transform: 'scaleX(-1)' }}
           />
-
+          
           {/* Result Overlay */}
           {result && (
             <div className="absolute inset-0 flex items-center justify-center bg-black/60 backdrop-blur-sm z-10">
               <div className="text-center px-6 py-8 sm:px-12 sm:py-10 max-w-sm sm:max-w-md mx-4 rounded-2xl animate-in fade-in zoom-in-95 duration-300"
                 style={{
                   background: result.type === 'success'
-                    ? 'rgba(22, 163, 74, 0.9)'
-                    : result.type === 'not_found'
-                    ? 'rgba(220, 38, 38, 0.9)'
-                    : 'rgba(217, 119, 6, 0.9)',
+                    ? 'rgba(22, 163, 74, 0.95)'
+                    : result.type === 'too_early_to_punch_out'
+                    ? 'rgba(245, 158, 11, 0.95)'
+                    : result.type === 'already_punched_in'
+                    ? 'rgba(245, 158, 11, 0.95)'
+                    : result.type === 'already_punched_out'
+                    ? 'rgba(107, 114, 128, 0.95)'
+                    : result.type === 'no_punch_in'
+                    ? 'rgba(220, 38, 38, 0.95)'
+                    : 'rgba(217, 119, 6, 0.95)',
                 }}>
                 {result.type === 'success' && (
                   <>
-                    <CheckCircle2 className="h-16 w-16 sm:h-20 sm:w-20 text-white mx-auto mb-4" />
-                    <h2 className="text-2xl sm:text-3xl font-bold text-white mb-6">Thank You!</h2>
+                    {result.punchType === 'in' ? (
+                      <CheckCircle2 className="h-16 w-16 sm:h-20 sm:w-20 text-white mx-auto mb-4" />
+                    ) : (
+                      <LogOut className="h-16 w-16 sm:h-20 sm:w-20 text-white mx-auto mb-4" />
+                    )}
+                    <h2 className="text-2xl sm:text-3xl font-bold text-white mb-2">
+                      {result.punchType === 'in' ? 'Welcome!' : 'Goodbye!'}
+                    </h2>
+                    <p className="text-base sm:text-lg text-white mb-4">
+                      {result.punchType === 'in' ? 'Punched In Successfully' : 'Punched Out Successfully'}
+                    </p>
                     <div className="space-y-3">
                       {result.photoURL && (
                         <img
@@ -452,7 +649,71 @@ const FaceAttendance = () => {
                     </div>
                   </>
                 )}
-
+                
+                {result.type === 'too_early_to_punch_out' && (
+                  <>
+                    <AlertTriangle className="h-16 w-16 sm:h-20 sm:w-20 text-white mx-auto mb-4" />
+                    <h2 className="text-2xl sm:text-3xl font-bold text-white mb-2">Too Early to Punch Out!</h2>
+                    <p className="text-base sm:text-lg text-white mb-2">
+                      Please wait {result.remainingMinutes} more minute{result.remainingMinutes !== 1 ? 's' : ''}
+                    </p>
+                    <p className="text-sm sm:text-base text-white/80">
+                      Minimum 10 minutes required between punches
+                    </p>
+                    <p className="text-xs text-white/60 mt-3">
+                      {result.employeeName} (ID: {result.employeeCode})
+                    </p>
+                  </>
+                )}
+                
+                {result.type === 'already_punched_in' && (
+                  <>
+                    <Clock className="h-16 w-16 sm:h-20 sm:w-20 text-white mx-auto mb-4" />
+                    <h2 className="text-2xl sm:text-3xl font-bold text-white mb-2">Already Punched In!</h2>
+                    <p className="text-base sm:text-lg text-white mb-2">
+                      You are already checked in
+                    </p>
+                    <p className="text-sm sm:text-base text-white/80">
+                      Please wait 10 minutes before punching out
+                    </p>
+                    <p className="text-xs text-white/60 mt-3">
+                      {result.employeeName} (ID: {result.employeeCode})
+                    </p>
+                  </>
+                )}
+                
+                {result.type === 'already_punched_out' && (
+                  <>
+                    <CheckCircle2 className="h-16 w-16 sm:h-20 sm:w-20 text-white mx-auto mb-4" />
+                    <h2 className="text-2xl sm:text-3xl font-bold text-white mb-2">Day Complete!</h2>
+                    <p className="text-base sm:text-lg text-white mb-2">
+                      You have already punched out
+                    </p>
+                    <p className="text-sm sm:text-base text-white/80">
+                      See you tomorrow!
+                    </p>
+                    <p className="text-xs text-white/60 mt-3">
+                      {result.employeeName} (ID: {result.employeeCode})
+                    </p>
+                  </>
+                )}
+                
+                {result.type === 'no_punch_in' && (
+                  <>
+                    <AlertCircle className="h-16 w-16 sm:h-20 sm:w-20 text-white mx-auto mb-4" />
+                    <h2 className="text-2xl sm:text-3xl font-bold text-white mb-2">No Punch In Found</h2>
+                    <p className="text-base sm:text-lg text-white mb-2">
+                      Please punch in first
+                    </p>
+                    <p className="text-sm sm:text-base text-white/80">
+                      {result.message || 'You need to punch in before punching out'}
+                    </p>
+                    <p className="text-xs text-white/60 mt-3">
+                      {result.employeeName} (ID: {result.employeeCode})
+                    </p>
+                  </>
+                )}
+                
                 {result.type === 'not_found' && (
                   <>
                     <UserX className="h-16 w-16 sm:h-20 sm:w-20 text-white mx-auto mb-4" />
@@ -460,7 +721,7 @@ const FaceAttendance = () => {
                     <p className="text-sm sm:text-base text-white/80">Please contact HR for assistance.</p>
                   </>
                 )}
-
+                
                 {result.type === 'too_far' && (
                   <>
                     <ZoomIn className="h-16 w-16 sm:h-20 sm:w-20 text-white mx-auto mb-4" />
@@ -471,7 +732,7 @@ const FaceAttendance = () => {
               </div>
             </div>
           )}
-
+          
           {/* Center guide when idle */}
           {cameraActive && !result && (
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
