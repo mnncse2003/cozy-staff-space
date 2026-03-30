@@ -67,6 +67,7 @@ interface MenuPreferences {
   chat: boolean;
   shiftManagement: boolean;
   faceEnrollment: boolean;
+  faceEnrollmentManagement: boolean;
   faceAttendance: boolean;
 }
 
@@ -97,6 +98,7 @@ const DEFAULT_MENU_PREFERENCES: MenuPreferences = {
   chat: true,
   shiftManagement: true,
   faceEnrollment: true,
+  faceEnrollmentManagement: true,
   faceAttendance: true,
 };
 
@@ -232,7 +234,7 @@ export function AppSidebar() {
     { id: '/hr-analytics', label: 'HR Analytics', icon: BarChart3, visible: Boolean(menuPreferences.hrAnalytics) && normalizedRole === 'hr' },
     { id: '/device-access', label: 'Device Access', icon: Shield, visible: Boolean(menuPreferences.deviceAccess) && normalizedRole === 'hr' },
     { id: '/face-enrollment', label: 'Face Enrollment', icon: ScanFace, visible: Boolean(menuPreferences.faceEnrollment) && normalizedRole === 'hr' },
-    { id: '/face-enrollment-management', label: 'Face Data Mgmt', icon: UserCheck, visible: Boolean(menuPreferences.faceEnrollment) && normalizedRole === 'hr' },
+    { id: '/face-enrollment-management', label: 'Face Data Mgmt', icon: UserCheck, visible: Boolean(menuPreferences.faceEnrollmentManagement) && normalizedRole === 'hr' },
     { id: '/face-attendance', label: 'Face Attendance', icon: ScanFace, visible: Boolean(menuPreferences.faceAttendance) && (normalizedRole === 'hr' || normalizedRole === 'hod') },
   ];
 
