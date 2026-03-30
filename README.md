@@ -315,6 +315,7 @@ The application uses a comprehensive design system with semantic HSL color token
    - `subscriptions` - Payment/subscription records (Razorpay)
    - `user_preferences` - User menu and dashboard preferences
    - `system_settings` - Global system configuration (logo, name)
+   - `face_data` - Employee facial recognition descriptors and metadata
 
 5. **Razorpay Configuration** (Optional — for payment features)
    
