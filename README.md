@@ -523,11 +523,14 @@ Employees have access to a self-service portal for:
 6. Generate monthly salary slips
 7. Manage departments, holidays, and notifications
 8. Create and assign work shifts to employees
-9. Handle exit processes (resignations, clearance, settlements)
-10. Review self-service requests
-11. Respond to helpdesk tickets and update statuses
-12. Update organization branding
-13. View HR Analytics
+9. Enroll employee faces via Face Enrollment page
+10. Manage face data (view, search, delete) via Face Data Mgmt
+11. Set up Face Attendance kiosk for biometric punch-in/out
+12. Handle exit processes (resignations, clearance, settlements)
+13. Review self-service requests
+14. Respond to helpdesk tickets and update statuses
+15. Update organization branding
+16. View HR Analytics
 
 ### For HOD
 1. Select your organization from the list
