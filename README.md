@@ -241,6 +241,7 @@ The application uses a comprehensive design system with semantic HSL color token
 - **Notifications**: React Hot Toast & Sonner
 - **Animations**: Framer Motion
 - **Excel Processing**: ExcelJS
+- **Face Recognition**: face-api.js (SSD MobileNetV1, 68-point landmarks, face descriptors)
 
 ## Prerequisites
 
