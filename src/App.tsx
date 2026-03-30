@@ -100,6 +100,7 @@ const App = () => (
             <Route path="/shift-management" element={<ProtectedRoute><ShiftManagement /></ProtectedRoute>} />
             <Route path="/face-enrollment" element={<ProtectedRoute><FaceEnrollment /></ProtectedRoute>} />
             <Route path="/face-attendance" element={<ProtectedRoute><FaceAttendance /></ProtectedRoute>} />
+            <Route path="/face-enrollment-management" element={<ProtectedRoute><FaceEnrollmentManagement /></ProtectedRoute>} />
 
             <Route path="/" element={<Navigate to="/login" />} />
             <Route path="*" element={<NotFound />} />
