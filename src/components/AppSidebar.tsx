@@ -98,6 +98,7 @@ const DEFAULT_MENU_PREFERENCES: MenuPreferences = {
   chat: true,
   shiftManagement: true,
   faceEnrollment: true,
+  faceEnrollmentManagement: true,
   faceAttendance: true,
 };
 
