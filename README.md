@@ -20,6 +20,7 @@ A comprehensive multi-organization web-based HR Management System built with Rea
   - **Login Devices Section**: View and manage active login sessions
 - **Attendance Tracking**: 
   - Mark punch-in/out times from dashboard or attendance page
+  - **Face Recognition Attendance**: Punch in/out via facial recognition kiosk
   - Request attendance edits for forgotten punch-outs
   - View daily, weekly, and monthly attendance records
   - Generate attendance reports
