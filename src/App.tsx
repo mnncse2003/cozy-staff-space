@@ -42,6 +42,7 @@ import Chat from "./pages/Chat";
 import ShiftManagement from "./pages/admin/ShiftManagement";
 import FaceEnrollment from "./pages/admin/FaceEnrollment";
 import FaceAttendance from "./pages/admin/FaceAttendance";
+import FaceEnrollmentManagement from "./pages/admin/FaceEnrollmentManagement";
 import InstallApp from "./components/InstallApp";
 
 const queryClient = new QueryClient();
