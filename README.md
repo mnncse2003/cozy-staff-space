@@ -490,6 +490,19 @@ Employees have access to a self-service portal for:
 - **Tabbed Interface**: Separate tabs for managing shifts and viewing assignments
 - **Role-Based Access**: Available to HR (full CRUD) and HOD (view and assign)
 
+## Face Recognition Attendance
+
+- **Technology**: face-api.js with SSD MobileNetV1 for detection, 68-point facial landmarks, and 128-dimension face descriptors
+- **Models**: Stored in `/public/models/` and loaded at runtime
+- **Enrollment**: HR captures multiple face samples per employee; descriptors stored in Firestore (`face_data` collection) as arrays of objects for compatibility
+- **Kiosk Mode**: Fullscreen, mobile-responsive attendance page bypassing the main layout
+- **Detection Flow**: Video feed → face detection → size check (proximity) → descriptor matching → attendance sync
+- **Audio Feedback**: Web Speech API announces "Thank You", "User Not Found", or "Please come closer"
+- **Image Capture**: Real-time JPEG snapshot saved to Firestore on each punch event
+- **Attendance Sync**: Writes to the primary `attendance` collection with `source: 'face_recognition'` and `location: 'Office Face Machine'`
+- **Cooldown**: 60-second per-user cooldown prevents duplicate punches
+- **Management**: HR can view all enrolled faces, search by name/department, delete enrollments, and trigger re-enrollment
+
 ## Usage
 
 ### For Super Admin
