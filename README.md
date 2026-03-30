@@ -584,6 +584,7 @@ src/
 │   ├── dateUtils.ts             # Date utility functions
 │   ├── deviceFingerprint.ts     # Device fingerprint generation
 │   ├── deviceSessionService.ts  # Device session management service
+│   ├── faceRecognitionService.ts # Face-api.js model loading and detection
 │   ├── razorpay.ts              # Razorpay payment integration
 │   └── utils.ts                 # Utility functions
 ├── pages/
