@@ -88,6 +88,17 @@ A comprehensive multi-organization web-based HR Management System built with Rea
   - Approve or reject attendance edit requests
   - Filter by date range and employee with searchable dropdown
   - Export attendance reports
+- **Face Recognition System**:
+  - **Face Enrollment**: Capture and store employee facial data with multiple samples
+  - **Face Enrollment Management**: View, search, and delete enrolled face data; track capture counts per employee
+  - **Face Attendance Kiosk**: Mobile-responsive fullscreen kiosk for facial recognition punch-in/out
+    - Real-time face detection with proximity validation ("Please come closer" prompt)
+    - Audio feedback via Web Speech API ("Thank You", "User Not Found", "Please come closer")
+    - Captures real-time face snapshot at punch time and saves to attendance record
+    - Displays employee name, photo, and ID on successful recognition
+    - Records location as "Office Face Machine" in attendance
+    - 60-second cooldown per user to prevent duplicate punches
+    - Syncs with primary attendance collection for unified reporting
 - **Leave Management**:
   - Configure leave types and balances
   - Review pending leave requests from organization employees
