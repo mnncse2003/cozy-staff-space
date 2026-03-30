@@ -164,6 +164,7 @@ A comprehensive multi-organization web-based HR Management System built with Rea
 - **Department View**: View employees within assigned department
 - **Shift Management**: View and manage shift assignments for department employees
 - **Attendance Management & Reporting**: Access attendance management and reports for the department
+- **Face Attendance**: Access face recognition attendance kiosk for department
 - **Exit Management**: Participate in exit management processes
 - **Restricted Access**: Cannot manage employees, departments, attendance, or holidays
 
