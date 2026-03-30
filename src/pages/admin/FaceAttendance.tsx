@@ -421,6 +421,8 @@ const FaceAttendance = () => {
           time: new Date().toLocaleTimeString(),
           timestamp: Timestamp.now(),
           type: 'out',
+          location: 'Office Face Machine',
+          faceImage: captureCurrentFrame(),
         });
         
         showResult({
