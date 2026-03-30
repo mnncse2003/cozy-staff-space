@@ -20,6 +20,7 @@ import {
   Bell,
   Timer,
   ScanFace,
+  UserCheck,
 } from 'lucide-react';
 import {
   Sidebar,
