@@ -67,6 +67,7 @@ interface MenuPreferences {
   chat: boolean;
   shiftManagement: boolean;
   faceEnrollment: boolean;
+  faceEnrollmentManagement: boolean;
   faceAttendance: boolean;
 }
 
