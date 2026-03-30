@@ -591,6 +591,9 @@ src/
 │   ├── admin/                   # Admin pages
 │   │   ├── DeviceAccess.tsx     # Device access control page
 │   │   ├── ExitManagement.tsx   # Exit management page
+│   │   ├── FaceAttendance.tsx   # Face recognition kiosk page
+│   │   ├── FaceEnrollment.tsx   # Face data enrollment page
+│   │   ├── FaceEnrollmentManagement.tsx # Face data management dashboard
 │   │   ├── HRAnalytics.tsx      # HR analytics dashboard
 │   │   ├── ShiftManagement.tsx  # Shift management page
 │   │   ├── OrganizationManagement.tsx
