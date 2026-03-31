@@ -55,7 +55,10 @@ const mapDocToAttendanceRecord = (doc: any): AttendanceRecord => {
     punchOut: data.punchOut || null,
     punchInLocation: data.punchInLocation,
     punchOutLocation: data.punchOutLocation,
-    isLate: data.isLate || false
+    isLate: data.isLate || false,
+    faceImage: data.faceImage || null,
+    punchInFaceImage: data.punchInFaceImage || null,
+    punchOutFaceImage: data.punchOutFaceImage || null,
   };
 };
 
