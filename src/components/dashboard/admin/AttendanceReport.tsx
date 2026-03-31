@@ -747,12 +747,15 @@ const AttendanceReportHR = () => {
                           <TableCell>
                             {(record.punchInFaceImage || record.faceImage) ? (
                               <button
-                                onClick={() => setSelectedFaceImage({
-                                  image: record.punchInFaceImage || record.faceImage || '',
-                                  name: record.employeeName || 'Unknown',
-                                  date: record.date,
-                                  type: 'Punch In'
-                                })}
+                                onClick={() => {
+                                  setSelectedFaceImage({
+                                    image: record.punchInFaceImage || record.faceImage || '',
+                                    name: record.employeeName || 'Unknown',
+                                    date: record.date,
+                                    type: 'Punch In'
+                                  });
+                                  setShowFaceImageDialog(true);
+                                }}
                                 className="group relative"
                               >
                                 <img
