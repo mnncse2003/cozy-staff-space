@@ -952,6 +952,37 @@ const AttendanceReportHR = () => {
           </DialogContent>
         </Dialog>
       )}
+
+      {/* Face Image Dialog */}
+      <Dialog open={showFaceImageDialog} onOpenChange={setShowFaceImageDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Camera className="h-5 w-5 text-primary" />
+              Face Attendance Capture
+            </DialogTitle>
+            <DialogDescription>
+              {selectedFaceImage?.name} — {selectedFaceImage?.date} ({selectedFaceImage?.type})
+            </DialogDescription>
+          </DialogHeader>
+          {selectedFaceImage && (
+            <div className="flex flex-col items-center gap-4">
+              <img
+                src={selectedFaceImage.image}
+                alt={`Face capture of ${selectedFaceImage.name}`}
+                className="w-full max-w-[300px] rounded-xl border-2 border-primary/20 shadow-lg"
+              />
+              <div className="text-center text-sm text-muted-foreground">
+                <p className="font-medium text-foreground">{selectedFaceImage.name}</p>
+                <p>{format(new Date(selectedFaceImage.date), 'EEEE, MMM dd, yyyy')}</p>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setShowFaceImageDialog(false); setSelectedFaceImage(null); }}>Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
