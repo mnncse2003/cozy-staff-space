@@ -10,7 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
-import { FileDown, Calendar, Clock, Search, TrendingUp, ClipboardList, Filter, Users, AlertTriangle, Gift, MoreHorizontal } from 'lucide-react';
+import { FileDown, Calendar, Clock, Search, TrendingUp, ClipboardList, Filter, Users, AlertTriangle, Gift, MoreHorizontal, Camera } from 'lucide-react';
 import { format } from 'date-fns';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { SearchableEmployeeSelect } from '@/components/ui/searchable-employee-select';
