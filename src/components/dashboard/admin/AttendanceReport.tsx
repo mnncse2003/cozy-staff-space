@@ -84,7 +84,8 @@ const AttendanceReportHR = () => {
   const [showCompOffDialog, setShowCompOffDialog] = useState(false);
   const [compOffRecord, setCompOffRecord] = useState<AttendanceRecord | null>(null);
   const [compOffReason, setCompOffReason] = useState('');
-
+  const [showFaceImageDialog, setShowFaceImageDialog] = useState(false);
+  const [selectedFaceImage, setSelectedFaceImage] = useState<{ image: string; name: string; date: string; type: string } | null>(null);
   useEffect(() => {
     const initializeData = async () => {
       await fetchEmployees();
