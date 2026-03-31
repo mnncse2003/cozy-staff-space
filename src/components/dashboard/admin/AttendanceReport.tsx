@@ -693,6 +693,7 @@ const AttendanceReportHR = () => {
                       <TableHead className="font-semibold">Location</TableHead>
                       <TableHead className="font-semibold">Total Hours</TableHead>
                       <TableHead className="font-semibold">Status</TableHead>
+                      {isHR && <TableHead className="font-semibold">Face Image</TableHead>}
                       {isHR && <TableHead className="font-semibold">Actions</TableHead>}
                     </TableRow>
                   </TableHeader>
