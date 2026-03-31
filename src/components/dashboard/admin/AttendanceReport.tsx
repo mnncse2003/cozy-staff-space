@@ -849,6 +849,28 @@ const AttendanceReportHR = () => {
                         </p>
                       </div>
                     </div>
+                    {isHR && (record.punchInFaceImage || record.faceImage) && (
+                      <div className="mt-3 pt-3 border-t">
+                        <p className="text-muted-foreground text-xs mb-2">Face Capture</p>
+                        <button
+                          onClick={() => {
+                            setSelectedFaceImage({
+                              image: record.punchInFaceImage || record.faceImage || '',
+                              name: record.employeeName || 'Unknown',
+                              date: record.date,
+                              type: 'Punch In'
+                            });
+                            setShowFaceImageDialog(true);
+                          }}
+                        >
+                          <img
+                            src={record.punchInFaceImage || record.faceImage}
+                            alt="Face"
+                            className="w-12 h-12 rounded-lg object-cover border-2 border-primary/20"
+                          />
+                        </button>
+                      </div>
+                    )}
                     {isHR && (
                       <div className="flex gap-2 mt-3 pt-3 border-t">
                         {!record.isLate && (
