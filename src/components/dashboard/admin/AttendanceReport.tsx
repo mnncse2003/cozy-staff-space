@@ -745,6 +745,30 @@ const AttendanceReportHR = () => {
                         </TableCell>
                         {isHR && (
                           <TableCell>
+                            {(record.punchInFaceImage || record.faceImage) ? (
+                              <button
+                                onClick={() => setSelectedFaceImage({
+                                  image: record.punchInFaceImage || record.faceImage || '',
+                                  name: record.employeeName || 'Unknown',
+                                  date: record.date,
+                                  type: 'Punch In'
+                                })}
+                                className="group relative"
+                              >
+                                <img
+                                  src={record.punchInFaceImage || record.faceImage}
+                                  alt="Face"
+                                  className="w-10 h-10 rounded-full object-cover border-2 border-primary/20 group-hover:border-primary transition-colors"
+                                />
+                                <Camera className="absolute -bottom-1 -right-1 h-4 w-4 text-primary bg-background rounded-full p-0.5" />
+                              </button>
+                            ) : (
+                              <span className="text-xs text-muted-foreground">N/A</span>
+                            )}
+                          </TableCell>
+                        )}
+                        {isHR && (
+                          <TableCell>
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
                                 <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
