@@ -29,6 +29,9 @@ interface AttendanceRecord {
   punchInLocation?: any;
   punchOutLocation?: any;
   isLate?: boolean;
+  faceImage?: string;
+  punchInFaceImage?: string;
+  punchOutFaceImage?: string;
 }
 
 interface Employee {
