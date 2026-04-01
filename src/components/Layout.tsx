@@ -81,6 +81,7 @@ export default function Layout({ children, pageTitle }: LayoutProps) {
   return (
     <SidebarProvider defaultOpen={!isMobile}>
       {pageTitle === 'Dashboard' && <LoginNotificationModal />}
+      {pageTitle === 'Dashboard' && <PushNotificationPrompt />}
       <div className="flex min-h-screen w-full bg-background">
         {userRole && <AppSidebar />}
         
