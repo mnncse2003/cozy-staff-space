@@ -475,6 +475,44 @@ const DashboardSettings = () => {
         </Card>
       )}
 
+      {/* Push Notification Settings */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Bell className="h-5 w-5" />
+            Push Notifications
+          </CardTitle>
+          <CardDescription>
+            Receive browser notifications for attendance reminders, leave updates, birthdays, and announcements
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="space-y-1">
+              <Label htmlFor="push-notifications">Enable Push Notifications</Label>
+              <p className="text-xs text-muted-foreground">
+                {getPushPermissionStatus() === 'denied' 
+                  ? 'Notifications blocked in browser. Please update browser settings.' 
+                  : 'Get notified even when the app is in the background'}
+              </p>
+            </div>
+            <Switch
+              id="push-notifications"
+              checked={pushNotifEnabled}
+              onCheckedChange={togglePushNotifications}
+              disabled={pushLoading || getPushPermissionStatus() === 'denied'}
+            />
+          </div>
+          {pushNotifEnabled && (
+            <div className="rounded-lg bg-primary/5 p-3 text-sm text-muted-foreground space-y-1">
+              <p>✅ Attendance reminders</p>
+              <p>✅ Leave approval/rejection alerts</p>
+              <p>✅ Birthday wishes</p>
+              <p>✅ Admin announcements</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       <div className="grid gap-6 md:grid-cols-2">
         {/* Menu Preferences */}
