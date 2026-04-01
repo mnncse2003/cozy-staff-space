@@ -35,6 +35,9 @@ const NotificationBell = () => {
   const [unreadCount, setUnreadCount] = useState(0);
   const [chatUnreadCount, setChatUnreadCount] = useState(0);
   const [open, setOpen] = useState(false);
+  const [pushEnabled, setPushEnabled] = useState(false);
+  const prevNotifIdsRef = useRef<Set<string>>(new Set());
+  const isFirstLoadRef = useRef(true);
   const isSuperAdmin = userRole === 'super-admin';
 
   useEffect(() => {
