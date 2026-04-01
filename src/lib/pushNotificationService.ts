@@ -46,7 +46,7 @@ export const showBrowserNotification = (title: string, options?: NotificationOpt
     const notification = new Notification(title, {
       icon: '/pwa-192x192.png',
       badge: '/pwa-192x192.png',
-      vibrate: [200, 100, 200],
+      
       ...options,
     });
 
