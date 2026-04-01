@@ -118,6 +118,8 @@ const DashboardSettings = () => {
   });
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [pushNotifEnabled, setPushNotifEnabled] = useState(false);
+  const [pushLoading, setPushLoading] = useState(false);
 
   const isSuperAdmin = userRole === 'super-admin';
   const isHrOrHod = userRole === 'hr' || userRole === 'hod';
