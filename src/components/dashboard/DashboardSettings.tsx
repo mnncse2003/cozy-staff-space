@@ -10,7 +10,14 @@ import { db, storage } from '@/lib/firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { toast } from 'sonner';
 import { Separator } from '@/components/ui/separator';
-import { Upload, Image as ImageIcon } from 'lucide-react';
+import { Upload, Image as ImageIcon, Bell, BellOff } from 'lucide-react';
+import {
+  isPushSupported,
+  getPushPermissionStatus,
+  requestPushPermission,
+  savePushPreference,
+  getPushPreference,
+} from '@/lib/pushNotificationService';
 
 
 interface Preferences {
