@@ -127,12 +127,49 @@ const DashboardSettings = () => {
 
   useEffect(() => {
     loadPreferences();
+    loadPushPreference();
     if (isSuperAdmin) {
       loadSystemSettings();
     } else if (isHrOrHod && organizationId) {
       loadOrganizationSettings();
     }
   }, [user, userRole, organizationId]);
+
+  const loadPushPreference = async () => {
+    if (!user) return;
+    const enabled = await getPushPreference(user.uid);
+    setPushNotifEnabled(enabled);
+  };
+
+  const togglePushNotifications = async () => {
+    if (!user) return;
+    setPushLoading(true);
+    try {
+      if (!pushNotifEnabled) {
+        // Enabling - request permission first
+        if (isPushSupported()) {
+          const permission = await requestPushPermission();
+          if (permission !== 'granted') {
+            toast.error('Please allow notifications in your browser settings');
+            setPushLoading(false);
+            return;
+          }
+        }
+        await savePushPreference(user.uid, true);
+        setPushNotifEnabled(true);
+        toast.success('Push notifications enabled!');
+      } else {
+        await savePushPreference(user.uid, false);
+        setPushNotifEnabled(false);
+        toast.success('Push notifications disabled');
+      }
+    } catch (error) {
+      console.error('Error toggling push notifications:', error);
+      toast.error('Failed to update push notification settings');
+    } finally {
+      setPushLoading(false);
+    }
+  };
 
   const loadPreferences = async () => {
     if (!user) return;
