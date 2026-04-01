@@ -40,12 +40,17 @@ const NotificationBell = () => {
   const isFirstLoadRef = useRef(true);
   const isSuperAdmin = userRole === 'super-admin';
 
+  // Load push preference
+  useEffect(() => {
+    if (!user) return;
+    getPushPreference(user.uid).then(setPushEnabled);
+  }, [user]);
+
   useEffect(() => {
     if (!user) return;
 
     const fetchEmployeeAndNotifications = async () => {
       try {
-        // Get current user's employee ID and organization
         const employeesSnapshot = await getDocs(collection(db, 'employees'));
         const currentEmployee = employeesSnapshot.docs.find(doc => doc.data().userId === user.uid);
         const currentEmployeeId = currentEmployee?.id;
@@ -62,16 +67,27 @@ const NotificationBell = () => {
             ...doc.data()
           })) as Notification[];
           
-          // Filter notifications by organization and type
           const filteredNotifs = notifs.filter(n => {
-            // Only show notifications that belong to the user's organization
-            // Skip notifications without organizationId (legacy) or from different orgs
-            if (!n.organizationId || n.organizationId !== userOrgId) {
-              return false;
-            }
-            // Show general notifications or birthday wishes to the recipient
+            if (!n.organizationId || n.organizationId !== userOrgId) return false;
             return n.type === 'general' || (n.type === 'birthday' && n.recipientId === currentEmployeeId);
           });
+          
+          // Show browser push notifications for NEW notifications only
+          if (!isFirstLoadRef.current && pushEnabled) {
+            const currentIds = new Set(filteredNotifs.map(n => n.id));
+            filteredNotifs.forEach(n => {
+              if (!prevNotifIdsRef.current.has(n.id) && !n.readBy?.includes(user.uid)) {
+                if (n.type === 'birthday') {
+                  showBirthdayNotification(n.title);
+                } else {
+                  showAdminAnnouncementNotification(n.title, n.message);
+                }
+              }
+            });
+          }
+          
+          prevNotifIdsRef.current = new Set(filteredNotifs.map(n => n.id));
+          isFirstLoadRef.current = false;
           
           setNotifications(filteredNotifs);
           const unread = filteredNotifs.filter(n => !n.readBy?.includes(user.uid)).length;
