@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { collection, query, where, getDocs, doc, updateDoc, orderBy, onSnapshot } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/contexts/AuthContext';
@@ -13,6 +13,7 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { subscribeToConversations, getTotalUnreadCount } from '@/lib/chatService';
+import { showAdminAnnouncementNotification, showBirthdayNotification, getPushPreference } from '@/lib/pushNotificationService';
 
 interface Notification {
   id: string;
