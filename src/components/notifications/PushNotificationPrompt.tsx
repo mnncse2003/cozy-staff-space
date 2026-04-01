@@ -16,6 +16,8 @@ import {
   requestPushPermission,
   savePushPreference,
   getPushPreference,
+  registerFCMToken,
+  setupForegroundMessageHandler,
 } from '@/lib/pushNotificationService';
 import { toast } from 'sonner';
 
@@ -23,25 +25,47 @@ const PushNotificationPrompt = () => {
   const { user } = useAuth();
   const [open, setOpen] = useState(false);
 
+  // Set up foreground message handler when user has push enabled
   useEffect(() => {
     if (!user) return;
-    
+
+    let cleanup: (() => void) | null = null;
+
+    const init = async () => {
+      const enabled = await getPushPreference(user.uid);
+      if (enabled && getPushPermissionStatus() === 'granted') {
+        cleanup = setupForegroundMessageHandler();
+      }
+    };
+
+    init();
+    return () => cleanup?.();
+  }, [user]);
+
+  useEffect(() => {
+    if (!user) return;
+
     const checkPrompt = async () => {
       if (!isPushSupported()) return;
-      
+
       const status = getPushPermissionStatus();
-      // Don't prompt if already granted or denied at browser level
-      if (status === 'granted' || status === 'denied') return;
+      if (status === 'granted' || status === 'denied') {
+        // If already granted, ensure token is registered
+        if (status === 'granted') {
+          const pref = await getPushPreference(user.uid);
+          if (pref) {
+            await registerFCMToken(user.uid);
+          }
+        }
+        return;
+      }
 
-      // Check if user has already made a choice in our app
       const pref = await getPushPreference(user.uid);
-      if (pref) return; // Already opted in
+      if (pref) return;
 
-      // Check if we already prompted this session
       const prompted = sessionStorage.getItem('push_prompt_shown');
       if (prompted) return;
 
-      // Show prompt after a short delay
       setTimeout(() => {
         setOpen(true);
         sessionStorage.setItem('push_prompt_shown', 'true');
@@ -53,16 +77,17 @@ const PushNotificationPrompt = () => {
 
   const handleEnable = async () => {
     if (!user) return;
-    
+
     const permission = await requestPushPermission();
-    
+
     if (permission === 'granted') {
       await savePushPreference(user.uid, true);
-      toast.success('Push notifications enabled!');
+      setupForegroundMessageHandler();
+      toast.success('Push notifications enabled! You\'ll receive alerts even when the app is closed.');
     } else {
       toast.info('Notifications blocked. You can enable them in browser settings.');
     }
-    
+
     setOpen(false);
   };
 
@@ -82,15 +107,15 @@ const PushNotificationPrompt = () => {
               <Bell className="h-8 w-8 text-primary animate-bounce" />
             </div>
           </div>
-          <DialogTitle className="text-center">Enable Notifications</DialogTitle>
+          <DialogTitle className="text-center">Enable Push Notifications</DialogTitle>
           <DialogDescription className="text-center">
-            Stay updated with attendance reminders, leave approvals, birthday wishes, and important announcements.
+            Get real-time alerts even when the app is closed — attendance reminders, leave updates, birthday wishes, and announcements.
           </DialogDescription>
         </DialogHeader>
         <DialogFooter className="flex-col gap-2 sm:flex-col">
           <Button onClick={handleEnable} className="w-full">
             <Bell className="mr-2 h-4 w-4" />
-            Enable Notifications
+            Enable Push Notifications
           </Button>
           <Button variant="ghost" onClick={handleDismiss} className="w-full">
             <BellOff className="mr-2 h-4 w-4" />
