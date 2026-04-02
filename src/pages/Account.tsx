@@ -138,7 +138,6 @@ const Account = () => {
         email: userData.email,
         userName: userData.name,
         onSuccess: async () => {
-          await refreshUserData();
           setIsRenewing(false);
           
           toast({
