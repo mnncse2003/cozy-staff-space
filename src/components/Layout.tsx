@@ -1,4 +1,4 @@
-import { useState, useEffect, ReactNode } from 'react';
+import { useState, useEffect, ReactNode, lazy, Suspense } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Menu, User, LogOut, Settings } from 'lucide-react';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
@@ -9,6 +9,7 @@ import { db } from '@/lib/firebase';
 import NotificationBell from '@/components/notifications/NotificationBell';
 import LoginNotificationModal from '@/components/notifications/LoginNotificationModal';
 import PushNotificationPrompt from '@/components/notifications/PushNotificationPrompt';
+import ChatbotWidget from '@/components/chatbot/ChatbotWidget';
 // FloatingChatWidget hidden - chat notifications now shown in notification bell
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
@@ -142,6 +143,7 @@ export default function Layout({ children, pageTitle }: LayoutProps) {
             {children}
           </main>
         </div>
+        <ChatbotWidget />
       </div>
     </SidebarProvider>
   );

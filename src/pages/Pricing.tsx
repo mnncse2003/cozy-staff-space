@@ -98,6 +98,14 @@ const Pricing = () => {
         planName: plan.name,
         amount: plan.priceINR,
         currency: 'INR',
+        orgData: {
+          organizationName: '',
+          email: '',
+          hrAdminName: '',
+          hrAdminEmployeeCode: '',
+          hrAdminPan: '',
+          logoFile: null,
+        },
         onSuccess: (response, subscriptionId) => {
           setLoadingPlan(null);
           toast({
