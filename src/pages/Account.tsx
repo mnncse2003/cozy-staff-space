@@ -21,7 +21,41 @@ import {
 } from "lucide-react";
 
 const Account = () => {
-  const { user, userData, logout, refreshUserData, loading: authLoading } = useAuth();
+  const { user, logout, organizationId, organizationName, userRole, loading: authLoading } = useAuth();
+  const [userData, setUserData] = useState<any>(null);
+
+  useEffect(() => {
+    const loadUserData = async () => {
+      if (!user || !organizationId) return;
+      try {
+        const { doc: docRef, getDoc: getDocSnap } = await import('firebase/firestore');
+        const { db } = await import('@/lib/firebase');
+        
+        // Get employee data
+        const empSnap = await getDocSnap(docRef(db, 'employees', user.uid));
+        const empData = empSnap.exists() ? empSnap.data() : {};
+        
+        // Get org data
+        const orgSnap = await getDocSnap(docRef(db, 'organizations', organizationId));
+        const orgData = orgSnap.exists() ? orgSnap.data() : {};
+        
+        setUserData({
+          name: empData.name || user.email,
+          email: empData.email || user.email,
+          organizationId,
+          organizationName: organizationName || orgData.name,
+          subscriptionPlan: orgData.subscriptionPlan,
+          subscriptionStatus: orgData.subscriptionStatus,
+          subscriptionStartDate: orgData.subscriptionStartDate,
+          subscriptionEndDate: orgData.subscriptionEndDate,
+          ...empData,
+        });
+      } catch (error) {
+        console.error('Error loading user data:', error);
+      }
+    };
+    loadUserData();
+  }, [user, organizationId, organizationName]);
   const navigate = useNavigate();
   const { toast } = useToast();
   const [isRenewing, setIsRenewing] = useState(false);
