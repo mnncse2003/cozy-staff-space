@@ -388,8 +388,8 @@ async function getUpcomingHolidays(organizationId: string | null): Promise<Chatb
     }
 
     let content = `📅 **Upcoming Holidays**\n\n`;
-    snap.docs.forEach(doc => {
-      const data = doc.data();
+    snap.docs.forEach(d => {
+      const data = d.data() as Record<string, any>;
       const date = new Date(data.date).toLocaleDateString('en-IN', { 
         weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' 
       });

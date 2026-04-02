@@ -143,6 +143,7 @@ export default function Layout({ children, pageTitle }: LayoutProps) {
             {children}
           </main>
         </div>
+        <ChatbotWidget />
       </div>
     </SidebarProvider>
   );
