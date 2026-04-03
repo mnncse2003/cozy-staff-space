@@ -5,13 +5,15 @@ import {
   detectIntent, handleIntent, saveChatMessage, loadChatHistory,
   getSmartSuggestions, ChatbotMessage, ChatAction 
 } from '@/lib/chatbotService';
-import { Bot, X, Send, Sparkles, ArrowRight, MessageSquare } from 'lucide-react';
+import { Bot, X, Send, Sparkles, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 export default function ChatbotWidget() {
   const { user, userRole, organizationId } = useAuth();
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<ChatbotMessage[]>([]);
   const [input, setInput] = useState('');
@@ -26,14 +28,12 @@ export default function ChatbotWidget() {
 
   useEffect(() => { scrollToBottom(); }, [messages, scrollToBottom]);
 
-  // Load chat history on first open
   useEffect(() => {
     if (isOpen && user && !historyLoaded) {
       loadChatHistory(user.uid).then(history => {
         if (history.length > 0) {
           setMessages(history);
         } else {
-          // Welcome message
           setMessages([{
             role: 'assistant',
             content: `👋 Hi! I'm your HR Assistant. How can I help you today?\n\nType **help** to see what I can do.`,
@@ -48,6 +48,14 @@ export default function ChatbotWidget() {
     if (isOpen) inputRef.current?.focus();
   }, [isOpen]);
 
+  // Prevent body scroll when chatbot is open on mobile
+  useEffect(() => {
+    if (isMobile && isOpen) {
+      document.body.style.overflow = 'hidden';
+      return () => { document.body.style.overflow = ''; };
+    }
+  }, [isMobile, isOpen]);
+
   const sendMessage = async () => {
     if (!input.trim() || !user || !userRole) return;
 
@@ -56,29 +64,21 @@ export default function ChatbotWidget() {
     setInput('');
     setIsTyping(true);
 
-    // Save user message
     saveChatMessage(user.uid, organizationId, userMessage);
 
-    // Detect intent & handle
     const { intent } = detectIntent(userMessage.content);
-    
-    // Small delay for natural feel
-    await new Promise(r => setTimeout(r, 600 + Math.random() * 400));
-    
+    await new Promise(r => setTimeout(r, 400 + Math.random() * 400));
     const response = await handleIntent(intent, user.uid, userRole, organizationId);
-    
+
     setMessages(prev => [...prev, response]);
     setIsTyping(false);
 
-    // Save bot response
     saveChatMessage(user.uid, organizationId, response);
   };
 
   const handleSuggestionClick = (suggestion: string) => {
     setInput(suggestion);
-    setTimeout(() => {
-      sendMessage();
-    }, 100);
+    setTimeout(() => sendMessage(), 100);
   };
 
   const handleActionClick = (action: ChatAction) => {
@@ -93,6 +93,13 @@ export default function ChatbotWidget() {
       e.preventDefault();
       sendMessage();
     }
+  };
+
+  const clearChat = () => {
+    setMessages([{
+      role: 'assistant',
+      content: `👋 Chat cleared! How can I help you?`,
+    }]);
   };
 
   if (!user || !userRole) return null;
@@ -115,7 +122,12 @@ export default function ChatbotWidget() {
 
       {/* Chat Window */}
       {isOpen && (
-        <div className="fixed bottom-6 right-6 z-50 w-[360px] sm:w-[400px] h-[550px] bg-card border border-border rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in slide-in-from-bottom-4 duration-300">
+        <div className={cn(
+          "fixed z-50 bg-card border border-border shadow-2xl flex flex-col overflow-hidden animate-in slide-in-from-bottom-4 duration-300",
+          isMobile
+            ? "inset-0 rounded-none"
+            : "bottom-6 right-6 w-[360px] sm:w-[400px] h-[550px] rounded-2xl"
+        )}>
           {/* Header */}
           <div className="bg-primary text-primary-foreground px-4 py-3 flex items-center justify-between flex-shrink-0">
             <div className="flex items-center gap-2">
@@ -127,18 +139,28 @@ export default function ChatbotWidget() {
                 <p className="text-xs opacity-80">Always here to help</p>
               </div>
             </div>
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              className="text-primary-foreground hover:bg-primary-foreground/20 h-8 w-8"
-              onClick={() => setIsOpen(false)}
-            >
-              <X className="h-4 w-4" />
-            </Button>
+            <div className="flex items-center gap-1">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-primary-foreground hover:bg-primary-foreground/20 h-8 text-xs px-2"
+                onClick={clearChat}
+              >
+                Clear
+              </Button>
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="text-primary-foreground hover:bg-primary-foreground/20 h-8 w-8"
+                onClick={() => setIsOpen(false)}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
 
           {/* Messages */}
-          <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
+          <div className="flex-1 overflow-y-auto px-3 sm:px-4 py-3 space-y-3">
             {messages.map((msg, idx) => (
               <div key={idx} className={cn("flex", msg.role === 'user' ? 'justify-end' : 'justify-start')}>
                 <div className={cn(
@@ -156,7 +178,6 @@ export default function ChatbotWidget() {
                     })}
                   </div>
                   
-                  {/* Action Button */}
                   {msg.action && (
                     <button
                       onClick={() => handleActionClick(msg.action!)}
@@ -170,7 +191,6 @@ export default function ChatbotWidget() {
               </div>
             ))}
 
-            {/* Typing Indicator */}
             {isTyping && (
               <div className="flex justify-start">
                 <div className="bg-muted rounded-2xl rounded-bl-md px-4 py-3">
@@ -188,8 +208,8 @@ export default function ChatbotWidget() {
 
           {/* Smart Suggestions */}
           {messages.length <= 1 && (
-            <div className="px-4 pb-2 flex flex-wrap gap-1.5">
-              {suggestions.slice(0, 3).map((s, i) => (
+            <div className="px-3 sm:px-4 pb-2 flex flex-wrap gap-1.5">
+              {suggestions.slice(0, isMobile ? 4 : 3).map((s, i) => (
                 <button
                   key={i}
                   onClick={() => handleSuggestionClick(s)}
@@ -203,7 +223,10 @@ export default function ChatbotWidget() {
           )}
 
           {/* Input */}
-          <div className="border-t border-border px-3 py-2.5 flex items-center gap-2 flex-shrink-0">
+          <div className={cn(
+            "border-t border-border px-3 py-2.5 flex items-center gap-2 flex-shrink-0",
+            isMobile && "pb-[env(safe-area-inset-bottom,8px)]"
+          )}>
             <input
               ref={inputRef}
               type="text"
@@ -216,7 +239,7 @@ export default function ChatbotWidget() {
             />
             <Button
               size="icon"
-              className="h-8 w-8 rounded-full"
+              className="h-8 w-8 rounded-full flex-shrink-0"
               onClick={sendMessage}
               disabled={!input.trim() || isTyping}
             >
