@@ -74,16 +74,30 @@ const LeaveManagement = () => {
   const [canAllocate, setCanAllocate] = useState(true);
   const [queryText, setQueryText] = useState('');
   const [expandedEmployee, setExpandedEmployee] = useState(null);
+  const [orgDefaults, setOrgDefaults] = useState(DEFAULT_LEAVE_BALANCE);
 
   useEffect(() => {
     let mounted = true;
     (async () => {
+      await loadOrgDefaults();
       await fetchEmployeesWithBalances();
       await checkLastAllocation();
       if (mounted) setLoading(false);
     })();
     return () => { mounted = false; };
   }, []);
+
+  const loadOrgDefaults = async () => {
+    if (!organizationId) return;
+    try {
+      const snap = await getDoc(doc(db, 'organization_settings', `${organizationId}_leave_defaults`));
+      if (snap.exists()) {
+        setOrgDefaults({ ...DEFAULT_LEAVE_BALANCE, ...snap.data().defaults });
+      }
+    } catch (error) {
+      console.error('Error loading org defaults:', error);
+    }
+  };
 
   const checkLastAllocation = async () => {
     try {
@@ -127,7 +141,7 @@ const LeaveManagement = () => {
           } else {
             balance = {
               employeeId: employeeDoc.id,
-              ...DEFAULT_LEAVE_BALANCE,
+              ...orgDefaults,
               lastUpdated: new Date().toISOString(),
             };
             await setDoc(balanceRef, balance);
@@ -206,16 +220,16 @@ const LeaveManagement = () => {
         const newBalance = {
           employeeId: emp.id,
           PL: (current.PL || 0) + 2.5,
-          CL: current.CL ?? DEFAULT_LEAVE_BALANCE.CL,
-          SL: current.SL ?? DEFAULT_LEAVE_BALANCE.SL,
-          WFH: current.WFH ?? DEFAULT_LEAVE_BALANCE.WFH,
-          MATERNITY: current.MATERNITY ?? DEFAULT_LEAVE_BALANCE.MATERNITY,
-          PATERNITY: current.PATERNITY ?? DEFAULT_LEAVE_BALANCE.PATERNITY,
-          ADOPTION: current.ADOPTION ?? DEFAULT_LEAVE_BALANCE.ADOPTION,
-          SABBATICAL: current.SABBATICAL ?? DEFAULT_LEAVE_BALANCE.SABBATICAL,
-          BEREAVEMENT: current.BEREAVEMENT ?? DEFAULT_LEAVE_BALANCE.BEREAVEMENT,
-          PARENTAL: current.PARENTAL ?? DEFAULT_LEAVE_BALANCE.PARENTAL,
-          COMP_OFF: current.COMP_OFF ?? DEFAULT_LEAVE_BALANCE.COMP_OFF,
+          CL: current.CL ?? orgDefaults.CL,
+          SL: current.SL ?? orgDefaults.SL,
+          WFH: current.WFH ?? orgDefaults.WFH,
+          MATERNITY: current.MATERNITY ?? orgDefaults.MATERNITY,
+          PATERNITY: current.PATERNITY ?? orgDefaults.PATERNITY,
+          ADOPTION: current.ADOPTION ?? orgDefaults.ADOPTION,
+          SABBATICAL: current.SABBATICAL ?? orgDefaults.SABBATICAL,
+          BEREAVEMENT: current.BEREAVEMENT ?? orgDefaults.BEREAVEMENT,
+          PARENTAL: current.PARENTAL ?? orgDefaults.PARENTAL,
+          COMP_OFF: current.COMP_OFF ?? orgDefaults.COMP_OFF,
           lastUpdated: new Date().toISOString(),
         };
         batch.set(balanceRef, newBalance);
