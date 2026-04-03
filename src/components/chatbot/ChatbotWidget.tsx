@@ -3,7 +3,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { 
   detectIntent, handleIntent, saveChatMessage, loadChatHistory,
-  getSmartSuggestions, ChatbotMessage, ChatAction 
+  getSmartSuggestions, ChatbotMessage, ChatAction,
+  LeaveFlowState, handleLeaveFlowMessage, submitLeaveApplication
 } from '@/lib/chatbotService';
 import { Bot, X, Send, Sparkles, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
