@@ -62,14 +62,39 @@ export default function ChatbotWidget() {
 
     const userMessage: ChatbotMessage = { role: 'user', content: input.trim() };
     setMessages(prev => [...prev, userMessage]);
+    const currentInput = input.trim();
     setInput('');
     setIsTyping(true);
 
     saveChatMessage(user.uid, organizationId, userMessage);
 
-    const { intent } = detectIntent(userMessage.content);
+    // Check if we're in a leave application flow
+    if (leaveFlow) {
+      const { response, newState } = handleLeaveFlowMessage(currentInput, leaveFlow);
+      
+      if (response.content === '__SUBMIT_LEAVE__') {
+        // Actually submit the leave
+        const result = await submitLeaveApplication(user.uid, organizationId, leaveFlow);
+        setMessages(prev => [...prev, result]);
+        saveChatMessage(user.uid, organizationId, result);
+        setLeaveFlow(null);
+      } else {
+        setMessages(prev => [...prev, response]);
+        saveChatMessage(user.uid, organizationId, response);
+        setLeaveFlow(newState);
+      }
+      setIsTyping(false);
+      return;
+    }
+
+    const { intent } = detectIntent(currentInput);
     await new Promise(r => setTimeout(r, 400 + Math.random() * 400));
     const response = await handleIntent(intent, user.uid, userRole, organizationId);
+
+    // If intent is apply_leave, start the flow
+    if (intent === 'apply_leave') {
+      setLeaveFlow({ step: 'start_date' });
+    }
 
     setMessages(prev => [...prev, response]);
     setIsTyping(false);
