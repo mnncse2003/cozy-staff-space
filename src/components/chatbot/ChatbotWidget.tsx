@@ -19,6 +19,7 @@ export default function ChatbotWidget() {
   const [messages, setMessages] = useState<ChatbotMessage[]>([]);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  const [historyLoaded, setHistoryLoaded] = useState(false);
   const [leaveFlow, setLeaveFlow] = useState<LeaveFlowState | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
