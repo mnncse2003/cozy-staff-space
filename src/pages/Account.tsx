@@ -8,6 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { initiateRenewalPayment } from "@/lib/razorpay";
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import Layout from '@/components/Layout';
 import { 
   Loader2, 
   LogOut, 
@@ -19,8 +20,7 @@ import {
   User,
   Clock,
   CheckCircle,
-  AlertCircle,
-  ArrowLeft
+  AlertCircle
 } from "lucide-react";
 
 interface OrgData {
@@ -161,29 +161,8 @@ const Account = () => {
   const isExpired = isSubscriptionExpired();
 
   return (
-    <div className="min-h-screen bg-background">
-      <header className="border-b border-border bg-card">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Button variant="ghost" size="icon" onClick={() => navigate('/dashboard')}>
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
-            <div className="h-10 w-10 rounded-full bg-primary flex items-center justify-center">
-              <Crown className="h-5 w-5 text-primary-foreground" />
-            </div>
-            <div>
-              <h1 className="font-bold text-foreground">My Account</h1>
-              <p className="text-sm text-muted-foreground">{orgData.name}</p>
-            </div>
-          </div>
-          <Button variant="outline" onClick={handleLogout}>
-            <LogOut className="h-4 w-4 mr-2" />
-            Logout
-          </Button>
-        </div>
-      </header>
-
-      <main className="container mx-auto px-4 py-8">
+    <Layout pageTitle="My Account">
+      <div className="container mx-auto px-4 py-8">
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {/* User Info Card */}
           <Card>
@@ -322,8 +301,8 @@ const Account = () => {
             </Card>
           )}
         </div>
-      </main>
-    </div>
+      </div>
+    </Layout>
   );
 };
 
