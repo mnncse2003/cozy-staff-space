@@ -257,24 +257,25 @@ function helpMessage(role: UserRole): ChatbotMessage {
   return { role: 'assistant', content: commands };
 }
 
-// ========== LEAVE BALANCE (reads from leave_balances doc + leaves collection) ==========
+// ========== LEAVE BALANCE (only Privilege Leave) ==========
 
 async function getLeaveBalance(userId: string, organizationId: string | null): Promise<ChatbotMessage> {
   const year = new Date().getFullYear();
 
-  // 1. Read the leave_balances document (same way LeaveTab does)
-  let balanceData: Record<string, any> | null = null;
+  // 1. Read the leave_balances document
+  let plBalance: number | null = null;
   try {
     const balanceDoc = await getDoc(doc(db, 'leave_balances', userId));
     if (balanceDoc.exists()) {
-      balanceData = balanceDoc.data();
+      const data = balanceDoc.data();
+      plBalance = data.PL !== undefined ? Number(data.PL) : null;
     }
   } catch (e) {
     console.error('Error reading leave_balances:', e);
   }
 
-  // 2. Count used leaves from the 'leaves' collection (employeeId field)
-  const usedByType: Record<string, number> = {};
+  // 2. Count used PL from the 'leaves' collection
+  let plUsed = 0;
   try {
     const leavesQuery = query(
       collection(db, 'leaves'),
@@ -285,71 +286,26 @@ async function getLeaveBalance(userId: string, organizationId: string | null): P
     snap.docs.forEach(d => {
       const data = d.data();
       const createdYear = data.createdAt ? new Date(data.createdAt).getFullYear() : year;
-      if (createdYear === year) {
-        const type = data.leaveType || 'General';
-        const days = data.duration || 1;
-        usedByType[type] = (usedByType[type] || 0) + days;
+      if (createdYear === year && data.leaveType === 'PL') {
+        plUsed += data.duration || 1;
       }
     });
   } catch (e) {
     console.error('Error reading leaves:', e);
   }
 
-  const totalUsed = Object.values(usedByType).reduce((a, b) => a + b, 0);
+  let content = `📊 **Your Privilege Leave Balance (${year})**\n\n`;
 
-  // 3. Build balance summary
-  const leaveTypes = ['PL', 'CL', 'SL', 'WFH', 'COMP_OFF'];
-  const leaveNames: Record<string, string> = {
-    PL: 'Privilege Leave', CL: 'Casual Leave', SL: 'Sick Leave',
-    WFH: 'Work From Home', COMP_OFF: 'Comp Off',
-    MATERNITY: 'Maternity', PATERNITY: 'Paternity',
-    BEREAVEMENT: 'Bereavement', PARENTAL: 'Parental',
-    ADOPTION: 'Adoption', SABBATICAL: 'Sabbatical',
-  };
+  if (plBalance !== null) {
+    content += `Available: **${plBalance} days**\n`;
+    if (plUsed > 0) content += `Used this year: **${plUsed} days**\n`;
 
-  let content = `📊 **Your Leave Balance (${year})**\n\n`;
-
-  if (balanceData) {
-    let totalBalance = 0;
-    const rows: string[] = [];
-
-    for (const type of leaveTypes) {
-      const balance = balanceData[type];
-      if (balance !== undefined && balance !== null) {
-        totalBalance += Number(balance);
-        const used = usedByType[type] || 0;
-        rows.push(`• **${leaveNames[type] || type}**: ${balance} days${used > 0 ? ` (${used} used)` : ''}`);
-      }
+    if (plBalance <= 5) {
+      content += `\n⚠️ Your leave balance is running low. Plan accordingly!`;
     }
-
-    // Check other types that might exist
-    for (const [type, days] of Object.entries(balanceData)) {
-      if (!leaveTypes.includes(type) && typeof days === 'number' && !['employeeId', 'lastUpdated'].includes(type)) {
-        totalBalance += days;
-        const used = usedByType[type] || 0;
-        rows.push(`• **${leaveNames[type] || type}**: ${days} days${used > 0 ? ` (${used} used)` : ''}`);
-      }
-    }
-
-    content += `**Total Available: ${totalBalance} days**\n\n`;
-    content += rows.join('\n');
   } else {
-    // Fallback: no balance doc, show used only
-    content += `Used this year: **${totalUsed} days**\n\n`;
-    if (Object.keys(usedByType).length > 0) {
-      content += `**Breakdown:**\n`;
-      for (const [type, days] of Object.entries(usedByType)) {
-        content += `• ${leaveNames[type] || type}: ${days} day(s)\n`;
-      }
-    }
-    content += `\n💡 Contact HR to set up your leave balances.`;
-  }
-
-  if (balanceData) {
-    const totalBalance = leaveTypes.reduce((sum, t) => sum + (Number(balanceData![t]) || 0), 0);
-    if (totalBalance <= 5) {
-      content += `\n\n⚠️ Your leave balance is running low. Plan accordingly!`;
-    }
+    content += `Used PL this year: **${plUsed} days**\n`;
+    content += `\n💡 Contact HR to set up your leave balance.`;
   }
 
   return {
