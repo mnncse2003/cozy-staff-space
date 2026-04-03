@@ -49,6 +49,7 @@ const Account = lazy(() => import("./pages/Account"));
 const PurchaseSuccess = lazy(() => import("./pages/PurchaseSuccess"));
 const SubscriptionManagement = lazy(() => import("./pages/admin/SubscriptionManagement"));
 const Pricing = lazy(() => import("./pages/Pricing"));
+const MenuAccessControl = lazy(() => import("./pages/admin/MenuAccessControl"));
 
 // Loading component
 const PageLoader = () => (
@@ -353,6 +354,14 @@ const App = () => (
               <ProtectedRoute>
                 <LazyRoute>
                   <SubscriptionManagement />
+                </LazyRoute>
+              </ProtectedRoute>
+            } />
+
+            <Route path="/menu-access-control" element={
+              <ProtectedRoute>
+                <LazyRoute>
+                  <MenuAccessControl />
                 </LazyRoute>
               </ProtectedRoute>
             } />
