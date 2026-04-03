@@ -1,9 +1,13 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Check, Building2, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
-import { initiatePayment, planPrices } from "@/lib/razorpay";
+import { initiatePayment, planPrices, OrganizationData } from "@/lib/razorpay";
 import { useToast } from "@/hooks/use-toast";
 
 const pricingPlans = [
@@ -69,66 +73,77 @@ const pricingPlans = [
 
 const Pricing = () => {
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
+  const [showOrgForm, setShowOrgForm] = useState(false);
+  const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
+  const [orgForm, setOrgForm] = useState({
+    organizationName: "",
+    email: "",
+    contactPhone: "",
+    hrAdminName: "",
+    hrAdminEmployeeCode: "",
+    hrAdminPan: "",
+  });
 
-  const handleGetStarted = async (planName: string, hasPayment: boolean) => {
+  const handleGetStarted = (planName: string, hasPayment: boolean) => {
     if (!hasPayment) {
-      // For Enterprise, redirect to contact form or show contact info
-      toast({
-        title: "Contact Sales",
-        description: "Please reach out to our sales team for Enterprise pricing.",
-      });
+      toast({ title: "Contact Sales", description: "Please reach out to our sales team for Enterprise pricing." });
+      return;
+    }
+    setSelectedPlan(planName);
+    setShowOrgForm(true);
+  };
+
+  const handleSubmitOrgForm = async () => {
+    if (!selectedPlan) return;
+    if (!orgForm.organizationName || !orgForm.email || !orgForm.hrAdminName || !orgForm.hrAdminEmployeeCode || !orgForm.hrAdminPan) {
+      toast({ title: "Missing fields", description: "Please fill in all required fields.", variant: "destructive" });
       return;
     }
 
-    const plan = planPrices[planName];
-    if (!plan) {
-      toast({
-        title: "Error",
-        description: "Invalid plan selected",
-        variant: "destructive",
-      });
-      return;
-    }
+    const plan = planPrices[selectedPlan];
+    if (!plan) return;
 
-    setLoadingPlan(planName);
+    setShowOrgForm(false);
+    setLoadingPlan(selectedPlan);
+
+    const orgData: OrganizationData = {
+      ...orgForm,
+      logoFile: null,
+    };
 
     try {
       await initiatePayment({
         planName: plan.name,
         amount: plan.priceINR,
         currency: 'INR',
-        orgData: {
-          organizationName: '',
-          email: '',
-          hrAdminName: '',
-          hrAdminEmployeeCode: '',
-          hrAdminPan: '',
-          logoFile: null,
-        },
-        onSuccess: (response, subscriptionId) => {
+        orgData,
+        onSuccess: (response, subscriptionId, orgResult) => {
           setLoadingPlan(null);
-          toast({
-            title: "Payment Successful! 🎉",
-            description: `Thank you for subscribing to the ${planName} plan. Your subscription ID: ${subscriptionId}`,
-          });
+          if (orgResult?.success) {
+            navigate('/purchase-success', {
+              state: {
+                organizationName: orgForm.organizationName,
+                email: orgForm.email,
+                password: orgForm.hrAdminPan.toUpperCase(),
+                planName: selectedPlan,
+                hrAdminName: orgForm.hrAdminName,
+                orgId: orgResult.orgId,
+              }
+            });
+          } else {
+            toast({ title: "Payment Successful!", description: orgResult?.message || "Organization setup had issues. Contact support." });
+          }
         },
         onError: (error) => {
           setLoadingPlan(null);
-          toast({
-            title: "Payment Failed",
-            description: error?.description || error?.message || "Something went wrong. Please try again.",
-            variant: "destructive",
-          });
+          toast({ title: "Payment Failed", description: error?.description || error?.message || "Something went wrong.", variant: "destructive" });
         },
       });
     } catch (error: any) {
       setLoadingPlan(null);
-      toast({
-        title: "Error",
-        description: error?.message || "Failed to initialize payment",
-        variant: "destructive",
-      });
+      toast({ title: "Error", description: error?.message || "Failed to initialize payment", variant: "destructive" });
     }
   };
 
@@ -381,6 +396,44 @@ const Pricing = () => {
           </div>
         </div>
       </footer>
+
+      {/* Organization Registration Dialog */}
+      <Dialog open={showOrgForm} onOpenChange={setShowOrgForm}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Register Your Organization</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label>Organization Name *</Label>
+              <Input value={orgForm.organizationName} onChange={e => setOrgForm(p => ({ ...p, organizationName: e.target.value }))} placeholder="Acme Corp" />
+            </div>
+            <div className="space-y-2">
+              <Label>HR Admin Name *</Label>
+              <Input value={orgForm.hrAdminName} onChange={e => setOrgForm(p => ({ ...p, hrAdminName: e.target.value }))} placeholder="John Doe" />
+            </div>
+            <div className="space-y-2">
+              <Label>Email *</Label>
+              <Input type="email" value={orgForm.email} onChange={e => setOrgForm(p => ({ ...p, email: e.target.value }))} placeholder="hr@acme.com" />
+            </div>
+            <div className="space-y-2">
+              <Label>Phone</Label>
+              <Input value={orgForm.contactPhone} onChange={e => setOrgForm(p => ({ ...p, contactPhone: e.target.value }))} placeholder="+91 9876543210" />
+            </div>
+            <div className="space-y-2">
+              <Label>Employee Code *</Label>
+              <Input value={orgForm.hrAdminEmployeeCode} onChange={e => setOrgForm(p => ({ ...p, hrAdminEmployeeCode: e.target.value }))} placeholder="EMP001" />
+            </div>
+            <div className="space-y-2">
+              <Label>PAN Number * (used as initial password)</Label>
+              <Input value={orgForm.hrAdminPan} onChange={e => setOrgForm(p => ({ ...p, hrAdminPan: e.target.value }))} placeholder="ABCDE1234F" />
+            </div>
+            <Button className="w-full" onClick={handleSubmitOrgForm} disabled={!!loadingPlan}>
+              {loadingPlan ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Processing...</> : `Proceed to Pay - ${selectedPlan}`}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
