@@ -268,6 +268,28 @@ const Login = () => {
           toast.error('Employee not found. Please check your employee code.');
           return;
         }
+      } else {
+        // Email entered directly - verify it exists in employees collection
+        if (!selectedOrganization) {
+          toast.error('Please select your organization first');
+          setShowForgotPassword(false);
+          setStep('company');
+          return;
+        }
+        
+        const { collection, query, where, getDocs } = await import('firebase/firestore');
+        const employeesRef = collection(db, 'employees');
+        const q = query(
+          employeesRef,
+          where('email', '==', emailToReset),
+          where('organizationId', '==', selectedOrganization.id)
+        );
+        const snapshot = await getDocs(q);
+        
+        if (snapshot.empty) {
+          toast.error('No employee found with this email address in your organization.');
+          return;
+        }
       }
       
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -277,7 +299,15 @@ const Login = () => {
       }
       
       await sendPasswordResetEmail(auth, emailToReset);
-      toast.success('Password reset email sent! Please check your inbox and spam folder.');
+      
+      // Mask email for display: a***08@gmail.com
+      const [localPart, domain] = emailToReset.split('@');
+      const maskedLocal = localPart.length <= 2 
+        ? localPart[0] + '***' 
+        : localPart[0] + '***' + localPart.slice(-2);
+      const maskedEmail = maskedLocal + '@' + domain;
+      
+      toast.success(`Password reset email sent to ${maskedEmail}. Please check your inbox and spam folder.`);
       setShowForgotPassword(false);
       setResetEmail('');
     } catch (error: any) {
