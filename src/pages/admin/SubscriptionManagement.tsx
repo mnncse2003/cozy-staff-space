@@ -12,8 +12,9 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { collection, getDocs, doc, updateDoc, query, orderBy } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import Layout from '@/components/Layout';
 import { 
-  Loader2, Building2, CreditCard, Search, ArrowLeft,
+  Loader2, Building2, CreditCard, Search,
   DollarSign, TrendingUp, Users, Edit, CheckCircle, XCircle, Clock
 } from "lucide-react";
 
@@ -135,20 +136,8 @@ const SubscriptionManagement = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <header className="border-b border-border bg-card">
-        <div className="container mx-auto px-4 py-4 flex items-center gap-3">
-          <Button variant="ghost" size="icon" onClick={() => navigate('/dashboard')}>
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-          <div>
-            <h1 className="text-xl font-bold text-foreground">Subscription Management</h1>
-            <p className="text-sm text-muted-foreground">Manage all organization subscriptions</p>
-          </div>
-        </div>
-      </header>
-
-      <main className="container mx-auto px-4 py-8 space-y-6">
+    <Layout pageTitle="Subscription Management">
+      <div className="container mx-auto px-4 py-8 space-y-6">
         {/* Stats */}
         <div className="grid gap-4 md:grid-cols-4">
           <Card>
@@ -338,7 +327,7 @@ const SubscriptionManagement = () => {
             </div>
           </CardContent>
         </Card>
-      </main>
+      </div>
 
       {/* Edit Dialog */}
       <Dialog open={!!editingOrg} onOpenChange={() => setEditingOrg(null)}>
@@ -385,7 +374,7 @@ const SubscriptionManagement = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </Layout>
   );
 };
 
