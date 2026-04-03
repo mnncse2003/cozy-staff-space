@@ -257,24 +257,25 @@ function helpMessage(role: UserRole): ChatbotMessage {
   return { role: 'assistant', content: commands };
 }
 
-// ========== LEAVE BALANCE (reads from leave_balances doc + leaves collection) ==========
+// ========== LEAVE BALANCE (only Privilege Leave) ==========
 
 async function getLeaveBalance(userId: string, organizationId: string | null): Promise<ChatbotMessage> {
   const year = new Date().getFullYear();
 
-  // 1. Read the leave_balances document (same way LeaveTab does)
-  let balanceData: Record<string, any> | null = null;
+  // 1. Read the leave_balances document
+  let plBalance: number | null = null;
   try {
     const balanceDoc = await getDoc(doc(db, 'leave_balances', userId));
     if (balanceDoc.exists()) {
-      balanceData = balanceDoc.data();
+      const data = balanceDoc.data();
+      plBalance = data.PL !== undefined ? Number(data.PL) : null;
     }
   } catch (e) {
     console.error('Error reading leave_balances:', e);
   }
 
-  // 2. Count used leaves from the 'leaves' collection (employeeId field)
-  const usedByType: Record<string, number> = {};
+  // 2. Count used PL from the 'leaves' collection
+  let plUsed = 0;
   try {
     const leavesQuery = query(
       collection(db, 'leaves'),
@@ -285,71 +286,26 @@ async function getLeaveBalance(userId: string, organizationId: string | null): P
     snap.docs.forEach(d => {
       const data = d.data();
       const createdYear = data.createdAt ? new Date(data.createdAt).getFullYear() : year;
-      if (createdYear === year) {
-        const type = data.leaveType || 'General';
-        const days = data.duration || 1;
-        usedByType[type] = (usedByType[type] || 0) + days;
+      if (createdYear === year && data.leaveType === 'PL') {
+        plUsed += data.duration || 1;
       }
     });
   } catch (e) {
     console.error('Error reading leaves:', e);
   }
 
-  const totalUsed = Object.values(usedByType).reduce((a, b) => a + b, 0);
+  let content = `📊 **Your Privilege Leave Balance (${year})**\n\n`;
 
-  // 3. Build balance summary
-  const leaveTypes = ['PL', 'CL', 'SL', 'WFH', 'COMP_OFF'];
-  const leaveNames: Record<string, string> = {
-    PL: 'Privilege Leave', CL: 'Casual Leave', SL: 'Sick Leave',
-    WFH: 'Work From Home', COMP_OFF: 'Comp Off',
-    MATERNITY: 'Maternity', PATERNITY: 'Paternity',
-    BEREAVEMENT: 'Bereavement', PARENTAL: 'Parental',
-    ADOPTION: 'Adoption', SABBATICAL: 'Sabbatical',
-  };
+  if (plBalance !== null) {
+    content += `Available: **${plBalance} days**\n`;
+    if (plUsed > 0) content += `Used this year: **${plUsed} days**\n`;
 
-  let content = `📊 **Your Leave Balance (${year})**\n\n`;
-
-  if (balanceData) {
-    let totalBalance = 0;
-    const rows: string[] = [];
-
-    for (const type of leaveTypes) {
-      const balance = balanceData[type];
-      if (balance !== undefined && balance !== null) {
-        totalBalance += Number(balance);
-        const used = usedByType[type] || 0;
-        rows.push(`• **${leaveNames[type] || type}**: ${balance} days${used > 0 ? ` (${used} used)` : ''}`);
-      }
+    if (plBalance <= 5) {
+      content += `\n⚠️ Your leave balance is running low. Plan accordingly!`;
     }
-
-    // Check other types that might exist
-    for (const [type, days] of Object.entries(balanceData)) {
-      if (!leaveTypes.includes(type) && typeof days === 'number' && !['employeeId', 'lastUpdated'].includes(type)) {
-        totalBalance += days;
-        const used = usedByType[type] || 0;
-        rows.push(`• **${leaveNames[type] || type}**: ${days} days${used > 0 ? ` (${used} used)` : ''}`);
-      }
-    }
-
-    content += `**Total Available: ${totalBalance} days**\n\n`;
-    content += rows.join('\n');
   } else {
-    // Fallback: no balance doc, show used only
-    content += `Used this year: **${totalUsed} days**\n\n`;
-    if (Object.keys(usedByType).length > 0) {
-      content += `**Breakdown:**\n`;
-      for (const [type, days] of Object.entries(usedByType)) {
-        content += `• ${leaveNames[type] || type}: ${days} day(s)\n`;
-      }
-    }
-    content += `\n💡 Contact HR to set up your leave balances.`;
-  }
-
-  if (balanceData) {
-    const totalBalance = leaveTypes.reduce((sum, t) => sum + (Number(balanceData![t]) || 0), 0);
-    if (totalBalance <= 5) {
-      content += `\n\n⚠️ Your leave balance is running low. Plan accordingly!`;
-    }
+    content += `Used PL this year: **${plUsed} days**\n`;
+    content += `\n💡 Contact HR to set up your leave balance.`;
   }
 
   return {
@@ -649,9 +605,189 @@ async function getOpenTickets(userId: string): Promise<ChatbotMessage> {
 function applyLeaveAction(): ChatbotMessage {
   return {
     role: 'assistant',
-    content: "Sure! I'll take you to the leave application page. Click the button below to apply for leave.",
-    action: { type: 'navigate', data: {}, label: '📝 Apply for Leave', route: '/leave' },
+    content: "Sure! I'll help you apply for **Privilege Leave**.\n\nPlease provide the **start date** (e.g. 2025-07-10 or 10 July 2025):",
   };
+}
+
+// ========== INTERACTIVE LEAVE APPLICATION ==========
+
+export interface LeaveFlowState {
+  step: 'start_date' | 'end_date' | 'reason' | 'confirm';
+  startDate?: string;
+  endDate?: string;
+  reason?: string;
+}
+
+function parseDateString(input: string): string | null {
+  // Try ISO format first (YYYY-MM-DD)
+  const isoMatch = input.match(/(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if (isoMatch) {
+    const d = new Date(`${isoMatch[1]}-${isoMatch[2].padStart(2,'0')}-${isoMatch[3].padStart(2,'0')}T00:00:00`);
+    if (!isNaN(d.getTime())) return d.toISOString().split('T')[0];
+  }
+
+  // Try "DD Month YYYY" or "DD/MM/YYYY"
+  const slashMatch = input.match(/(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{4})/);
+  if (slashMatch) {
+    const d = new Date(`${slashMatch[3]}-${slashMatch[2].padStart(2,'0')}-${slashMatch[1].padStart(2,'0')}T00:00:00`);
+    if (!isNaN(d.getTime())) return d.toISOString().split('T')[0];
+  }
+
+  // Try natural language "10 July 2025", "July 10, 2025"
+  const naturalDate = new Date(input);
+  if (!isNaN(naturalDate.getTime()) && naturalDate.getFullYear() > 2000) {
+    return naturalDate.toISOString().split('T')[0];
+  }
+
+  return null;
+}
+
+function calculateDuration(start: string, end: string): number {
+  const s = new Date(start + 'T00:00:00');
+  const e = new Date(end + 'T00:00:00');
+  let count = 0;
+  const current = new Date(s);
+  while (current <= e) {
+    const day = current.getDay();
+    if (day !== 0 && day !== 6) count++;
+    current.setDate(current.getDate() + 1);
+  }
+  return count;
+}
+
+export function handleLeaveFlowMessage(
+  message: string,
+  state: LeaveFlowState
+): { response: ChatbotMessage; newState: LeaveFlowState | null } {
+  const trimmed = message.trim().toLowerCase();
+
+  if (trimmed === 'cancel' || trimmed === 'no' || trimmed === 'stop') {
+    return {
+      response: { role: 'assistant', content: "❌ Leave application cancelled. Let me know if you need anything else!" },
+      newState: null,
+    };
+  }
+
+  switch (state.step) {
+    case 'start_date': {
+      const date = parseDateString(message.trim());
+      if (!date) {
+        return {
+          response: { role: 'assistant', content: "❌ I couldn't understand that date. Please use a format like **2025-07-10** or **10 July 2025**:" },
+          newState: state,
+        };
+      }
+      if (new Date(date + 'T00:00:00') < new Date(new Date().toISOString().split('T')[0] + 'T00:00:00')) {
+        return {
+          response: { role: 'assistant', content: "❌ Start date can't be in the past. Please enter a future date:" },
+          newState: state,
+        };
+      }
+      return {
+        response: { role: 'assistant', content: `✅ Start date: **${date}**\n\nNow provide the **end date**:` },
+        newState: { ...state, step: 'end_date', startDate: date },
+      };
+    }
+    case 'end_date': {
+      const date = parseDateString(message.trim());
+      if (!date) {
+        return {
+          response: { role: 'assistant', content: "❌ I couldn't understand that date. Please use a format like **2025-07-12** or **12 July 2025**:" },
+          newState: state,
+        };
+      }
+      if (date < state.startDate!) {
+        return {
+          response: { role: 'assistant', content: "❌ End date can't be before the start date. Please enter a valid end date:" },
+          newState: state,
+        };
+      }
+      const duration = calculateDuration(state.startDate!, date);
+      return {
+        response: { role: 'assistant', content: `✅ End date: **${date}** (${duration} working day${duration !== 1 ? 's' : ''})\n\nPlease provide a **reason** for your leave:` },
+        newState: { ...state, step: 'reason', endDate: date },
+      };
+    }
+    case 'reason': {
+      if (message.trim().length < 3) {
+        return {
+          response: { role: 'assistant', content: "Please provide a more detailed reason (at least a few words):" },
+          newState: state,
+        };
+      }
+      const duration = calculateDuration(state.startDate!, state.endDate!);
+      const newState = { ...state, step: 'confirm' as const, reason: message.trim() };
+      return {
+        response: {
+          role: 'assistant',
+          content: `📋 **Leave Application Summary**\n\n• Type: **Privilege Leave (PL)**\n• From: **${state.startDate}**\n• To: **${state.endDate}**\n• Duration: **${duration} working day${duration !== 1 ? 's' : ''}**\n• Reason: **${message.trim()}**\n\nShall I submit this? Type **yes** to confirm or **cancel** to discard.`,
+        },
+        newState,
+      };
+    }
+    case 'confirm': {
+      if (trimmed === 'yes' || trimmed === 'confirm' || trimmed === 'submit' || trimmed === 'ok') {
+        // Return a special marker — the actual submission happens in the widget
+        return {
+          response: { role: 'assistant', content: '__SUBMIT_LEAVE__' },
+          newState: state,
+        };
+      }
+      return {
+        response: { role: 'assistant', content: "Type **yes** to submit, or **cancel** to discard." },
+        newState: state,
+      };
+    }
+    default:
+      return {
+        response: { role: 'assistant', content: "Something went wrong. Let's start over — say **apply for leave**." },
+        newState: null,
+      };
+  }
+}
+
+export async function submitLeaveApplication(
+  userId: string,
+  organizationId: string | null,
+  state: LeaveFlowState
+): Promise<ChatbotMessage> {
+  try {
+    // Get employee info
+    const empQuery = query(collection(db, 'employees'), where('userId', '==', userId));
+    const empSnap = await getDocs(empQuery);
+    const empData = empSnap.empty ? null : empSnap.docs[0].data();
+
+    const duration = calculateDuration(state.startDate!, state.endDate!);
+
+    await addDoc(collection(db, 'leaves'), {
+      employeeId: userId,
+      employeeName: empData?.name || '',
+      employeeCode: empData?.employeeCode || '',
+      leaveType: 'PL',
+      startDate: state.startDate,
+      endDate: state.endDate,
+      duration,
+      reason: state.reason || '',
+      status: 'PENDING',
+      isPaid: true,
+      organizationId: organizationId || null,
+      appliedAt: new Date().toISOString(),
+      createdAt: new Date().toISOString(),
+    });
+
+    return {
+      role: 'assistant',
+      content: `✅ **Leave Applied Successfully!**\n\n• Type: Privilege Leave\n• From: ${state.startDate}\n• To: ${state.endDate}\n• Duration: ${duration} working day${duration !== 1 ? 's' : ''}\n• Status: **Pending Approval** ⏳\n\nYour HR/HOD will review this soon. 🎉`,
+      action: { type: 'navigate', data: {}, label: '📋 View My Leaves', route: '/leave' },
+    };
+  } catch (error) {
+    console.error('Error submitting leave:', error);
+    return {
+      role: 'assistant',
+      content: "❌ Failed to submit the leave application. Please try again or apply manually from the Leave page.",
+      action: { type: 'navigate', data: {}, label: '📝 Apply Manually', route: '/leave' },
+    };
+  }
 }
 
 function salarySlipAction(): ChatbotMessage {
