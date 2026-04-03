@@ -21,6 +21,7 @@ import {
   Timer,
   ScanFace,
   UserCheck,
+  CreditCard,
 } from 'lucide-react';
 import {
   Sidebar,
@@ -192,6 +193,7 @@ export function AppSidebar() {
   const superAdminMenuItems = [
     { id: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, visible: true },
     { id: '/admin/organizations', label: 'Organizations', icon: Building, visible: true },
+    { id: '/subscription-management', label: 'Subscriptions', icon: CreditCard, visible: true },
     { id: '/settings', label: 'System Settings', icon: Settings, visible: true },
   ];
 
@@ -236,6 +238,7 @@ export function AppSidebar() {
     { id: '/face-enrollment', label: 'Face Enrollment', icon: ScanFace, visible: Boolean(menuPreferences.faceEnrollment) && normalizedRole === 'hr' },
     { id: '/face-enrollment-management', label: 'Face Data Mgmt', icon: UserCheck, visible: Boolean(menuPreferences.faceEnrollmentManagement) && normalizedRole === 'hr' },
     { id: '/face-attendance', label: 'Face Attendance', icon: ScanFace, visible: Boolean(menuPreferences.faceAttendance) && (normalizedRole === 'hr' || normalizedRole === 'hod') },
+    { id: '/account', label: 'Account', icon: CreditCard, visible: normalizedRole === 'hr' },
   ];
 
   const menuItems = isSuperAdmin ? superAdminMenuItems : (isEmployee ? employeeMenuItems : adminMenuItems);
