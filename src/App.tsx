@@ -44,6 +44,9 @@ import FaceEnrollment from "./pages/admin/FaceEnrollment";
 import FaceAttendance from "./pages/admin/FaceAttendance";
 import FaceEnrollmentManagement from "./pages/admin/FaceEnrollmentManagement";
 import InstallApp from "./components/InstallApp";
+import Account from "./pages/Account";
+import PurchaseSuccess from "./pages/PurchaseSuccess";
+import SubscriptionManagement from "./pages/admin/SubscriptionManagement";
 
 const queryClient = new QueryClient();
 
@@ -101,6 +104,9 @@ const App = () => (
             <Route path="/face-enrollment" element={<ProtectedRoute><FaceEnrollment /></ProtectedRoute>} />
             <Route path="/face-attendance" element={<ProtectedRoute><FaceAttendance /></ProtectedRoute>} />
             <Route path="/face-enrollment-management" element={<ProtectedRoute><FaceEnrollmentManagement /></ProtectedRoute>} />
+            <Route path="/account" element={<ProtectedRoute><Account /></ProtectedRoute>} />
+            <Route path="/purchase-success" element={<PurchaseSuccess />} />
+            <Route path="/subscription-management" element={<ProtectedRoute><SubscriptionManagement /></ProtectedRoute>} />
 
             <Route path="/" element={<Navigate to="/login" />} />
             <Route path="*" element={<NotFound />} />
