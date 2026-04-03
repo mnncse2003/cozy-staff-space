@@ -22,6 +22,7 @@ import {
   ScanFace,
   UserCheck,
   CreditCard,
+  Menu,
 } from 'lucide-react';
 import {
   Sidebar,
@@ -194,6 +195,7 @@ export function AppSidebar() {
     { id: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, visible: true },
     { id: '/admin/organizations', label: 'Organizations', icon: Building, visible: true },
     { id: '/subscription-management', label: 'Subscriptions', icon: CreditCard, visible: true },
+    { id: '/menu-access-control', label: 'Menu Access', icon: Menu, visible: true },
     { id: '/settings', label: 'System Settings', icon: Settings, visible: true },
   ];
 
