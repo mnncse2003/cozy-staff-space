@@ -126,6 +126,7 @@ export default function ChatbotWidget() {
       role: 'assistant',
       content: `👋 Chat cleared! How can I help you?`,
     }]);
+    setLeaveFlow(null);
   };
 
   if (!user || !userRole) return null;
