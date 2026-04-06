@@ -7,7 +7,7 @@ import { Toaster as HotToaster } from "react-hot-toast";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { Suspense, lazy } from "react";
 
-// Lazy load all page components
+// Lazy load page components
 const Login = lazy(() => import("./pages/Login"));
 const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
