@@ -1,10 +1,15 @@
 import Layout from '@/components/Layout';
+import { Skeleton } from 'boneyard-js/react';
+import { useState } from 'react';
 import AttendanceTab from '@/components/dashboard/employee/AttendanceTab';
 import AttendanceRequests from '@/components/dashboard/employee/AttendanceRequests';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Clock, FileText } from 'lucide-react';
+import { AttendanceTabSkeleton } from '@/components/skeletons/DashboardSkeleton';
 
 const Attendance = () => {
+  const [loaded, setLoaded] = useState(false);
+
   return (
     <Layout pageTitle="Attendance">
       <div className="space-y-4 p-4 sm:p-6">
@@ -20,7 +25,9 @@ const Attendance = () => {
             </TabsTrigger>
           </TabsList>
           <TabsContent value="attendance">
-            <AttendanceTab />
+            <Skeleton name="attendance-tab" loading={!loaded} fallback={<AttendanceTabSkeleton />}>
+              <AttendanceTab onLoad={() => setLoaded(true)} />
+            </Skeleton>
           </TabsContent>
           <TabsContent value="requests">
             <AttendanceRequests />
