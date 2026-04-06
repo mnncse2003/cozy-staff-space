@@ -50,6 +50,7 @@ const PurchaseSuccess = lazy(() => import("./pages/PurchaseSuccess"));
 const SubscriptionManagement = lazy(() => import("./pages/admin/SubscriptionManagement"));
 const Pricing = lazy(() => import("./pages/Pricing"));
 const MenuAccessControl = lazy(() => import("./pages/admin/MenuAccessControl"));
+const BackupManagement = lazy(() => import("./pages/admin/BackupManagement"));
 
 // Loading component
 const PageLoader = () => (
@@ -362,6 +363,13 @@ const App = () => (
               <ProtectedRoute>
                 <LazyRoute>
                   <MenuAccessControl />
+                </LazyRoute>
+              </ProtectedRoute>
+            } />
+            <Route path="/backup-management" element={
+              <ProtectedRoute>
+                <LazyRoute>
+                  <BackupManagement />
                 </LazyRoute>
               </ProtectedRoute>
             } />
