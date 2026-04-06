@@ -150,10 +150,7 @@ const SalaryTab = () => {
           {/* Salary Slips List */}
           <div className="space-y-3">
             {loading ? (
-              <div className="text-center py-12">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600 mx-auto"></div>
-                <p className="text-muted-foreground mt-3">Loading salary slips...</p>
-              </div>
+              <SalaryListSkeleton />
             ) : salarySlips.length > 0 ? (
               salarySlips.map(slip => (
                 <Card key={slip.id} className="bg-gradient-to-r from-green-50/50 to-transparent border-green-200 hover:shadow-md transition-shadow">
