@@ -210,7 +210,6 @@ const MenuAccessControl = () => {
 
         {loading ? (
           <MenuAccessSkeleton />
-          </div>
         ) : (
           <Tabs defaultValue="staff">
             <TabsList className="grid w-full grid-cols-3">
