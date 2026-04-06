@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { DepartmentSkeleton } from '@/components/skeletons/DashboardSkeleton';
 import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, query, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/contexts/AuthContext';

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { AttendanceRecordsSkeleton } from '@/components/skeletons/DashboardSkeleton';
 import { useAuth } from '@/contexts/AuthContext';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';

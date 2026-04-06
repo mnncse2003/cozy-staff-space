@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { ShiftSkeleton } from '@/components/skeletons/DashboardSkeleton';
 import { collection, addDoc, getDocs, query, where, updateDoc, doc, deleteDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/contexts/AuthContext';
