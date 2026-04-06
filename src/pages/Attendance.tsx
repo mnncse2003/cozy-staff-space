@@ -1,5 +1,4 @@
 import Layout from '@/components/Layout';
-import { Skeleton } from 'boneyard-js/react';
 import { useState, useEffect } from 'react';
 import AttendanceTab from '@/components/dashboard/employee/AttendanceTab';
 import AttendanceRequests from '@/components/dashboard/employee/AttendanceRequests';
@@ -30,9 +29,7 @@ const Attendance = () => {
             </TabsTrigger>
           </TabsList>
           <TabsContent value="attendance">
-            <Skeleton name="attendance-tab" loading={!loaded} fallback={<AttendanceTabSkeleton />}>
-              <AttendanceTab />
-            </Skeleton>
+            {!loaded ? <AttendanceTabSkeleton /> : <AttendanceTab />}
           </TabsContent>
           <TabsContent value="requests">
             <AttendanceRequests />
