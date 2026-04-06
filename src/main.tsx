@@ -1,6 +1,14 @@
 import { createRoot } from "react-dom/client";
+import { configureBoneyard } from 'boneyard-js/react';
 import App from "./App.tsx";
 import "./index.css";
+
+// Configure boneyard skeleton screens
+configureBoneyard({
+  color: 'hsl(var(--muted))',
+  darkColor: 'hsl(var(--muted))',
+  animate: 'pulse',
+});
 
 // Unregister service workers in iframe/preview contexts to prevent caching issues
 const isInIframe = (() => {
