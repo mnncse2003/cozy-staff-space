@@ -151,7 +151,7 @@ const SalaryTab = () => {
           {/* Salary Slips List */}
           <div className="space-y-3">
             {loading ? (
-              <SalaryListSkeleton />
+              <ListSkeleton rows={5} />
             ) : salarySlips.length > 0 ? (
               salarySlips.map(slip => (
                 <Card key={slip.id} className="bg-gradient-to-r from-green-50/50 to-transparent border-green-200 hover:shadow-md transition-shadow">

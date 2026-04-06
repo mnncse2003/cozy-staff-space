@@ -697,7 +697,7 @@ const LeaveTab = () => {
         </CardHeader>
         <CardContent className="pt-4">
           {loading ? (
-            <LeaveListSkeleton />
+            <ListSkeleton rows={5} />
           ) : formattedLeaves.length === 0 ? (
             <div className="text-center py-12">
               <CalendarIcon className="h-16 w-16 mx-auto text-muted-foreground/30 mb-4" />
