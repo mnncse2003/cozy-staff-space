@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { LeaveTypeSettingsSkeleton } from '@/components/skeletons/DashboardSkeleton';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/contexts/AuthContext';
