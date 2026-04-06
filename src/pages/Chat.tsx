@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { Skeleton } from 'boneyard-js/react';
 import Layout from '@/components/Layout';
 import ConversationList from '@/components/chat/ConversationList';
 import ChatWindow from '@/components/chat/ChatWindow';
@@ -25,23 +24,31 @@ export default function Chat() {
     setSelectedConversation(null);
   };
 
+  if (!loaded) {
+    return (
+      <Layout pageTitle="Chat">
+        <div className="sm:p-6 h-[calc(100vh-65px)] flex">
+          <ChatPageSkeleton />
+        </div>
+      </Layout>
+    );
+  }
+
   return (
     <Layout pageTitle="Chat">
       <div className="sm:p-6 h-[calc(100vh-65px)] flex">
-        <Skeleton name="chat-page" loading={!loaded} fallback={<ChatPageSkeleton />}>
-          <div className={`${isMobile ? (selectedConversation ? 'hidden' : 'w-full') : 'w-80 lg:w-96'} flex-shrink-0`}>
-            <ConversationList
-              selectedConversation={selectedConversation}
-              onSelectConversation={handleSelectConversation}
-            />
-          </div>
-          <div className={`flex-1 ${isMobile && !selectedConversation ? 'hidden' : ''}`}>
-            <ChatWindow 
-              conversation={selectedConversation}
-              onBack={isMobile ? handleBack : undefined}
-            />
-          </div>
-        </Skeleton>
+        <div className={`${isMobile ? (selectedConversation ? 'hidden' : 'w-full') : 'w-80 lg:w-96'} flex-shrink-0`}>
+          <ConversationList
+            selectedConversation={selectedConversation}
+            onSelectConversation={handleSelectConversation}
+          />
+        </div>
+        <div className={`flex-1 ${isMobile && !selectedConversation ? 'hidden' : ''}`}>
+          <ChatWindow 
+            conversation={selectedConversation}
+            onBack={isMobile ? handleBack : undefined}
+          />
+        </div>
       </div>
     </Layout>
   );

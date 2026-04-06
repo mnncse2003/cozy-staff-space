@@ -1,5 +1,4 @@
 import Layout from '@/components/Layout';
-import { Skeleton } from 'boneyard-js/react';
 import { useState, useEffect } from 'react';
 import SalaryTab from '@/components/dashboard/employee/SalaryTab';
 import { SalaryTabSkeleton } from '@/components/skeletons/DashboardSkeleton';
@@ -15,9 +14,7 @@ const Salary = () => {
   return (
     <Layout pageTitle="Salary">
       <div className="space-y-4 p-4 sm:p-6">
-        <Skeleton name="salary-tab" loading={!loaded} fallback={<SalaryTabSkeleton />}>
-          <SalaryTab />
-        </Skeleton>
+        {!loaded ? <SalaryTabSkeleton /> : <SalaryTab />}
       </div>
     </Layout>
   );
