@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { DepartmentSkeleton } from '@/components/skeletons/DashboardSkeleton';
 import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, query, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/contexts/AuthContext';
@@ -243,7 +244,7 @@ const DepartmentManagement = () => {
       </CardHeader>
       <CardContent>
         {loading ? (
-          <div className="text-center py-8 text-muted-foreground">Loading...</div>
+          <DepartmentSkeleton />
         ) : (
           <div className="space-y-3">
             {departments.map(dept => (

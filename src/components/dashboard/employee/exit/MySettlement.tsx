@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { ExitCardSkeleton } from '@/components/skeletons/DashboardSkeleton';
 import { useAuth } from '@/contexts/AuthContext';
 import { collection, getDocs, query, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
@@ -62,13 +63,7 @@ export const MySettlement = () => {
   };
 
   if (loading) {
-    return (
-      <Card>
-        <CardContent className="p-6">
-          <div className="text-center text-muted-foreground">Loading...</div>
-        </CardContent>
-      </Card>
-    );
+    return <ExitCardSkeleton />;
   }
 
   if (!settlement) {

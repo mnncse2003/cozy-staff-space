@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { ShiftSkeleton } from '@/components/skeletons/DashboardSkeleton';
 import { collection, addDoc, getDocs, query, where, updateDoc, doc, deleteDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/contexts/AuthContext';
@@ -440,9 +441,7 @@ const ShiftManagement = () => {
             </CardHeader>
             <CardContent className="pt-4">
               {loading ? (
-                <div className="flex items-center justify-center py-12">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-                </div>
+                <ShiftSkeleton />
               ) : shifts.length === 0 ? (
                 <div className="text-center py-12">
                   <Timer className="h-12 w-12 mx-auto text-muted-foreground/30 mb-4" />

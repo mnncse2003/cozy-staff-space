@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { LeaveTypeSettingsSkeleton } from '@/components/skeletons/DashboardSkeleton';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/contexts/AuthContext';
@@ -91,11 +92,7 @@ const LeaveTypeSettings = () => {
   };
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center py-12">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
-      </div>
-    );
+    return <LeaveTypeSettingsSkeleton />;
   }
 
   return (

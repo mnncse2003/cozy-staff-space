@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { AccountSkeleton } from '@/components/skeletons/DashboardSkeleton';
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -76,11 +77,7 @@ const Account = () => {
   }, [user, organizationId]);
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
+    return <AccountSkeleton />;
   }
 
   if (!user || !orgData) {

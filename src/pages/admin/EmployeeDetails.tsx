@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { EmployeeDetailsSkeleton } from '@/components/skeletons/DashboardSkeleton';
 import { useParams, useNavigate } from 'react-router-dom';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
@@ -99,9 +100,9 @@ const EmployeeDetails = () => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-lg">Loading...</div>
-      </div>
+      <Layout pageTitle="Employee Details">
+        <EmployeeDetailsSkeleton />
+      </Layout>
     );
   }
 
