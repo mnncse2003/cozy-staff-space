@@ -665,10 +665,7 @@ const AttendanceReportHR = () => {
         </CardHeader>
         <CardContent className="p-0 md:p-6">
           {loading ? (
-            <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
-              <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mb-4" />
-              <p>Loading attendance records...</p>
-            </div>
+            <AttendanceRecordsSkeleton />
           ) : filteredRecords.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
               <Calendar className="h-12 w-12 mb-4 opacity-50" />

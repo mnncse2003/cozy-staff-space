@@ -675,9 +675,7 @@ NET SALARY: ₹${slip.netSalary.toFixed(2)}
               </div>
 
               {loading ? (
-                <div className="flex items-center justify-center py-12">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-                </div>
+                <ListSkeleton rows={4} />
               ) : (
                 <div className="space-y-4">
                   {filteredSlips.map(slip => (
@@ -767,9 +765,7 @@ NET SALARY: ₹${slip.netSalary.toFixed(2)}
             </CardHeader>
             <CardContent className="pt-4">
               {loading ? (
-                <div className="flex items-center justify-center py-12">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-                </div>
+                <ListSkeleton rows={4} />
               ) : (
                 <div className="space-y-4">
                   {recentSlips.map(slip => (
