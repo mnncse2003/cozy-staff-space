@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { MenuAccessSkeleton } from '@/components/skeletons/DashboardSkeleton';
 import { collection, getDocs, doc, getDoc, setDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/contexts/AuthContext';
@@ -208,8 +209,7 @@ const MenuAccessControl = () => {
         </Card>
 
         {loading ? (
-          <div className="flex items-center justify-center py-12">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+          <MenuAccessSkeleton />
           </div>
         ) : (
           <Tabs defaultValue="staff">

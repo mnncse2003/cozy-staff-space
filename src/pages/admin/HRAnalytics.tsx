@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { HRAnalyticsSkeleton } from '@/components/skeletons/DashboardSkeleton';
 import Layout from '@/components/Layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -495,9 +496,7 @@ export default function HRAnalytics() {
   if (loading) {
     return (
       <Layout pageTitle="HR Analytics">
-        <div className="flex items-center justify-center min-h-[60vh]">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-        </div>
+        <HRAnalyticsSkeleton />
       </Layout>
     );
   }

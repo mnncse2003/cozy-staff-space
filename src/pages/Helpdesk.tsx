@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { HelpdeskSkeleton } from '@/components/skeletons/DashboardSkeleton';
 import { useAuth } from '@/contexts/AuthContext';
 import { collection, addDoc, query, where, orderBy, getDocs, updateDoc, doc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
@@ -411,10 +412,7 @@ export default function Helpdesk() {
 
           <CardContent className="p-0">
             {loading ? (
-              <div className="text-center py-12">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-                <p className="text-muted-foreground mt-3">Loading tickets...</p>
-              </div>
+              <HelpdeskSkeleton />
             ) : filteredTickets.length === 0 ? (
               <Card className="text-center py-16 mx-4 my-4 border-dashed bg-muted/20">
                 <CardContent>
