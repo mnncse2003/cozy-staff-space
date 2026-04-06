@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Skeleton } from 'boneyard-js/react';
 import Layout from '@/components/Layout';
 import ConversationList from '@/components/chat/ConversationList';
@@ -12,6 +12,11 @@ export default function Chat() {
   const [loaded, setLoaded] = useState(false);
   const isMobile = useIsMobile();
 
+  useEffect(() => {
+    const timer = setTimeout(() => setLoaded(true), 100);
+    return () => clearTimeout(timer);
+  }, []);
+
   const handleSelectConversation = (conv: Conversation) => {
     setSelectedConversation(conv);
   };
@@ -24,16 +29,12 @@ export default function Chat() {
     <Layout pageTitle="Chat">
       <div className="sm:p-6 h-[calc(100vh-65px)] flex">
         <Skeleton name="chat-page" loading={!loaded} fallback={<ChatPageSkeleton />}>
-          {/* Conversation List */}
           <div className={`${isMobile ? (selectedConversation ? 'hidden' : 'w-full') : 'w-80 lg:w-96'} flex-shrink-0`}>
             <ConversationList
               selectedConversation={selectedConversation}
               onSelectConversation={handleSelectConversation}
-              onLoad={() => setLoaded(true)}
             />
           </div>
-
-          {/* Chat Window */}
           <div className={`flex-1 ${isMobile && !selectedConversation ? 'hidden' : ''}`}>
             <ChatWindow 
               conversation={selectedConversation}

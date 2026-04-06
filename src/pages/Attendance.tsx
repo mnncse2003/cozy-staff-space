@@ -1,6 +1,6 @@
 import Layout from '@/components/Layout';
 import { Skeleton } from 'boneyard-js/react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import AttendanceTab from '@/components/dashboard/employee/AttendanceTab';
 import AttendanceRequests from '@/components/dashboard/employee/AttendanceRequests';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -9,6 +9,11 @@ import { AttendanceTabSkeleton } from '@/components/skeletons/DashboardSkeleton'
 
 const Attendance = () => {
   const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setLoaded(true), 100);
+    return () => clearTimeout(timer);
+  }, []);
 
   return (
     <Layout pageTitle="Attendance">
@@ -26,7 +31,7 @@ const Attendance = () => {
           </TabsList>
           <TabsContent value="attendance">
             <Skeleton name="attendance-tab" loading={!loaded} fallback={<AttendanceTabSkeleton />}>
-              <AttendanceTab onLoad={() => setLoaded(true)} />
+              <AttendanceTab />
             </Skeleton>
           </TabsContent>
           <TabsContent value="requests">
