@@ -587,8 +587,11 @@ const FaceAttendance = () => {
       {loadingModels && (
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center space-y-4 px-4">
-            <Loader2 className="h-10 w-10 sm:h-12 sm:w-12 animate-spin text-primary mx-auto" />
-            <p className="text-sm sm:text-lg text-gray-300">Loading face recognition models...</p>
+            <div className="space-y-3 w-64 mx-auto">
+              <Skeleton className="h-16 w-16 rounded-full mx-auto" />
+              <Skeleton className="h-4 w-48 mx-auto" />
+              <Skeleton className="h-3 w-32 mx-auto" />
+            </div>
           </div>
         </div>
       )}

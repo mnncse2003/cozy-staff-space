@@ -129,9 +129,12 @@ const SubscriptionManagement = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
+      <Layout pageTitle="Subscription Management">
+        <div className="container mx-auto px-4 py-8 space-y-6">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">{[...Array(3)].map((_, i) => (<Card key={i}><CardContent className="p-4 space-y-2"><Skeleton className="h-4 w-24" /><Skeleton className="h-7 w-16" /></CardContent></Card>))}</div>
+          <Card><CardContent className="p-6"><ListSkeleton rows={5} /></CardContent></Card>
+        </div>
+      </Layout>
     );
   }
 
