@@ -1,3 +1,4 @@
+import { Skeleton } from '@/components/ui/skeleton';
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { collection, getDocs, query, where, addDoc, updateDoc, doc, orderBy, limit, Timestamp } from 'firebase/firestore';
