@@ -1,3 +1,4 @@
+import { Skeleton } from '@/components/ui/skeleton';
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -114,8 +115,8 @@ const LoginDevicesSection = () => {
             Login Devices
           </CardTitle>
         </CardHeader>
-        <CardContent className="flex items-center justify-center py-8 sm:py-12">
-          <Loader2 className="h-6 w-6 sm:h-8 sm:w-8 animate-spin text-primary" />
+        <CardContent className="py-8 sm:py-12 space-y-3">
+          {[...Array(3)].map((_, i) => (<div key={i} className="flex items-center gap-3 p-3 rounded-lg bg-muted/30"><Skeleton className="h-10 w-10 rounded-lg" /><div className="space-y-1.5 flex-1"><Skeleton className="h-4 w-32" /><Skeleton className="h-3 w-24" /></div><Skeleton className="h-6 w-16 rounded-full" /></div>))}
         </CardContent>
       </Card>
     );
