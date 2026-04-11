@@ -301,8 +301,10 @@ const WeatherWidget = ({ latitude, longitude, locationError }: WeatherWidgetProp
   if (loading) {
     return (
       <Card className="border-0 overflow-hidden bg-gradient-to-r from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-900">
-        <CardContent className="p-6 flex items-center justify-center">
-          <Loader2 className="h-8 w-8 animate-spin text-slate-600 dark:text-slate-400" />
+        <CardContent className="p-6 space-y-3">
+          <div className="flex items-center gap-3"><Skeleton className="h-12 w-12 rounded-full" /><div className="space-y-1.5"><Skeleton className="h-5 w-24" /><Skeleton className="h-3 w-16" /></div></div>
+          <Skeleton className="h-8 w-20" />
+          <Skeleton className="h-3 w-32" />
         </CardContent>
       </Card>
     );

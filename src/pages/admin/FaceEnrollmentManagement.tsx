@@ -213,9 +213,7 @@ const FaceEnrollmentManagement = () => {
             </div>
 
             {loading ? (
-              <div className="flex items-center justify-center py-12">
-                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 py-4">{[...Array(6)].map((_, i) => (<Card key={i}><CardContent className="p-4 space-y-3"><div className="flex items-center gap-3"><Skeleton className="h-12 w-12 rounded-full" /><div className="space-y-1.5"><Skeleton className="h-4 w-28" /><Skeleton className="h-3 w-20" /></div></div><Skeleton className="h-3 w-full" /></CardContent></Card>))}</div>
             ) : filtered.length === 0 ? (
               <div className="text-center py-12 text-muted-foreground">
                 <ScanFace className="h-12 w-12 mx-auto mb-3 opacity-50" />

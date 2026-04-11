@@ -263,9 +263,7 @@ const BackupManagement = () => {
             </CardHeader>
             <CardContent>
               {loading ? (
-                <div className="flex items-center justify-center py-8">
-                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                </div>
+                <div className="space-y-3 py-4">{[...Array(3)].map((_, i) => (<div key={i} className="flex items-center gap-3 p-3 rounded-lg bg-muted/30"><Skeleton className="h-10 w-10 rounded-lg" /><div className="space-y-1.5 flex-1"><Skeleton className="h-4 w-32" /><Skeleton className="h-3 w-24" /></div><Skeleton className="h-6 w-16 rounded-full" /></div>))}</div>
               ) : backups.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">
                   <Database className="h-12 w-12 mx-auto mb-3 opacity-50" />

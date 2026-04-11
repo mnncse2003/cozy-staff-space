@@ -170,10 +170,7 @@ export default function PayslipDownloads() {
 
         <CardContent className="p-0">
           {loading ? (
-            <div className="text-center py-12">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-              <p className="text-muted-foreground mt-3">Loading payslips...</p>
-            </div>
+            <div className="space-y-3 p-4">{[...Array(4)].map((_, i) => (<div key={i} className="flex items-center justify-between p-3 rounded-lg bg-muted/30"><div className="flex items-center gap-3"><Skeleton className="h-10 w-10 rounded-lg" /><div className="space-y-1.5"><Skeleton className="h-4 w-32" /><Skeleton className="h-3 w-24" /></div></div><Skeleton className="h-6 w-16 rounded-full" /></div>))}</div>
           ) : payslips.length === 0 ? (
             <Card className="text-center py-16 mx-4 my-4 border-dashed bg-muted/20">
               <CardContent>
