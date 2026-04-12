@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { 
-  detectIntent, handleIntent, saveChatMessage, loadChatHistory,
+  detectIntent, handleIntent, saveChatMessage, loadChatHistory, clearChatHistory,
   getSmartSuggestions, ChatbotMessage, ChatAction,
   LeaveFlowState, handleLeaveFlowMessage, submitLeaveApplication
 } from '@/lib/chatbotService';
@@ -122,12 +122,16 @@ export default function ChatbotWidget() {
     }
   };
 
-  const clearChat = () => {
+  const clearChat = async () => {
+    if (!user) return;
+
+    await clearChatHistory(user.uid);
     setMessages([{
       role: 'assistant',
       content: `👋 Chat cleared! How can I help you?`,
     }]);
     setLeaveFlow(null);
+    setHistoryLoaded(true);
   };
 
   if (!user || !userRole) return null;
