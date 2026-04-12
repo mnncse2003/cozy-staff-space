@@ -6,6 +6,7 @@ import { HashRouter, Routes, Route, Navigate } from "react-router-dom";
 import { Toaster as HotToaster } from "react-hot-toast";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { Suspense, lazy } from "react";
+import { PageSkeleton } from "@/components/skeletons/DashboardSkeleton";
 
 // Lazy load page components
 const Login = lazy(() => import("./pages/Login"));
@@ -54,11 +55,8 @@ const BackupManagement = lazy(() => import("./pages/admin/BackupManagement"));
 
 // Loading component
 const PageLoader = () => (
-  <div className="flex items-center justify-center min-h-screen">
-    <div className="flex flex-col items-center gap-4">
-      <div className="w-12 h-12 border-4 border-gray-300 border-t-blue-500 rounded-full animate-spin"></div>
-      <p className="text-gray-600">Loading...</p>
-    </div>
+  <div className="min-h-screen bg-background">
+    <PageSkeleton />
   </div>
 );
 

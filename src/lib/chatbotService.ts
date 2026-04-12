@@ -1,6 +1,6 @@
 import { 
   collection, query, where, getDocs, orderBy, limit, 
-  addDoc, serverTimestamp, Timestamp, doc, getDoc 
+  addDoc, serverTimestamp, Timestamp, doc, getDoc, deleteDoc 
 } from 'firebase/firestore';
 import { db } from './firebase';
 import { UserRole } from '@/contexts/AuthContext';
@@ -980,6 +980,21 @@ export async function loadChatHistory(
   } catch (error) {
     console.error('Error loading chat history:', error);
     return [];
+  }
+}
+
+export async function clearChatHistory(userId: string) {
+  try {
+    const q = query(
+      collection(db, 'chatbot_messages'),
+      where('userId', '==', userId),
+      limit(200)
+    );
+    const snap = await getDocs(q);
+    await Promise.all(snap.docs.map((messageDoc) => deleteDoc(messageDoc.ref)));
+  } catch (error) {
+    console.error('Error clearing chat history:', error);
+    throw error;
   }
 }
 
