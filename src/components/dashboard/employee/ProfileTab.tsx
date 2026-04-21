@@ -788,6 +788,17 @@ const ProfileTab = () => {
 
       {/* Login Devices Section */}
       <LoginDevicesSection />
+
+      {/* Profile photo crop dialog */}
+      <ImageCropDialog
+        open={cropDialogOpen}
+        imageSrc={cropImageSrc}
+        onClose={() => {
+          setCropDialogOpen(false);
+          setCropImageSrc(null);
+        }}
+        onCropComplete={handleCroppedUpload}
+      />
     </div>
   );
 };
