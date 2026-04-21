@@ -101,6 +101,8 @@ const ProfileTab = () => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [cropImageSrc, setCropImageSrc] = useState<string | null>(null);
+  const [cropDialogOpen, setCropDialogOpen] = useState(false);
   const [hodInfo, setHodInfo] = useState<Approver | null>(null);
   const [leaveApprovers, setLeaveApprovers] = useState<Approver[]>([]);
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
@@ -218,22 +220,38 @@ const ProfileTab = () => {
     setEditedProfile(prev => ({ ...prev, [field]: value }));
   };
 
-  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
+    // Reset input so selecting the same file again still triggers change
+    e.target.value = '';
     if (!file) return;
 
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error('File size must be less than 5MB');
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please select an image file');
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error('File size must be less than 10MB');
       return;
     }
 
+    const reader = new FileReader();
+    reader.onload = () => {
+      setCropImageSrc(reader.result as string);
+      setCropDialogOpen(true);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleCroppedUpload = async (blob: Blob) => {
+    if (!user) return;
     setUploading(true);
     try {
-      const storageRef = ref(storage, `profile-photos/${user!.uid}`);
-      await uploadBytes(storageRef, file);
+      const storageRef = ref(storage, `profile-photos/${user.uid}`);
+      await uploadBytes(storageRef, blob, { contentType: 'image/jpeg' });
       const profileImageUrl = await getDownloadURL(storageRef);
-      
-      await updateDoc(doc(db, 'employees', user!.uid), { profileImageUrl });
+
+      await updateDoc(doc(db, 'employees', user.uid), { profileImageUrl });
       setProfile(prev => ({ ...prev, profileImageUrl }));
       setEditedProfile(prev => ({ ...prev, profileImageUrl }));
       toast.success('Profile photo updated successfully!');
