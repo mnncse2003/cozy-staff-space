@@ -324,7 +324,7 @@ const BackupManagement = () => {
             </CardHeader>
             <CardContent>
               {loading ? (
-                <ListSkeleton count={4} />
+                <ListSkeleton rows={4} />
               ) : orgUsage.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">
                   <Building2 className="h-12 w-12 mx-auto mb-3 opacity-50" />
