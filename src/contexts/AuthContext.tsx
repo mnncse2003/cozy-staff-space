@@ -96,51 +96,49 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setUser(user);
       if (user) {
-        const roleDoc = await getDoc(doc(db, 'user_roles', user.uid));
-        if (roleDoc.exists()) {
-          const roleData = roleDoc.data();
-          const role = roleData.role;
-          // Handle legacy 'employee' role as 'staff'
-          setUserRole(role === 'employee' ? 'staff' : role);
-          
-          // Set organization if available and not super-admin
-          if (roleData.organizationId && role !== 'super-admin') {
-            const orgDocRef = doc(db, 'organizations', roleData.organizationId);
-            const orgSnap = await getDoc(orgDocRef);
-            if (orgSnap.exists()) {
-              const orgData = orgSnap.data();
-              setOrganizationId(roleData.organizationId);
-              setOrganizationName(orgData.name);
+        // Unblock UI as soon as we know the user is authenticated;
+        // role/org/session resolve in the background and pages re-render via context.
+        setLoading(false);
+
+        try {
+          const storedSessionId = localStorage.getItem('currentSessionId');
+          const roleSnapPromise = getDoc(doc(db, 'user_roles', user.uid));
+          const sessionSnapPromise = storedSessionId && !currentSessionId
+            ? getDoc(doc(db, 'device_sessions', storedSessionId))
+            : Promise.resolve(null);
+
+          const [roleDoc, sessionSnap] = await Promise.all([roleSnapPromise, sessionSnapPromise]);
+
+          if (roleDoc.exists()) {
+            const roleData = roleDoc.data();
+            const role = roleData.role;
+            setUserRole(role === 'employee' ? 'staff' : role);
+
+            if (roleData.organizationId && role !== 'super-admin') {
+              getDoc(doc(db, 'organizations', roleData.organizationId)).then(orgSnap => {
+                if (orgSnap.exists()) {
+                  setOrganizationId(roleData.organizationId);
+                  setOrganizationName(orgSnap.data().name);
+                }
+              }).catch(e => console.error('Error loading org:', e));
             }
           }
-        }
-        
-        // Only restore session monitoring if we have a valid stored session
-        // Don't set up monitoring here during login - login() handles it after creating the session
-        const storedSessionId = localStorage.getItem('currentSessionId');
-        if (storedSessionId && !currentSessionId) {
-          // Verify the session is still active before monitoring
-          const { doc: docRef, getDoc: getDocSnap } = await import('firebase/firestore');
-          try {
-            const sessionSnap = await getDocSnap(docRef(db, 'device_sessions', storedSessionId));
-            if (sessionSnap.exists() && sessionSnap.data().isActive) {
-              setCurrentSessionId(storedSessionId);
-              setupSessionMonitoring(user.uid, storedSessionId);
-            } else {
-              // Stale session - clean up
-              localStorage.removeItem('currentSessionId');
-            }
-          } catch (e) {
-            console.error('Error verifying session:', e);
+
+          if (sessionSnap && sessionSnap.exists() && sessionSnap.data().isActive) {
+            setCurrentSessionId(storedSessionId!);
+            setupSessionMonitoring(user.uid, storedSessionId!);
+          } else if (storedSessionId) {
             localStorage.removeItem('currentSessionId');
           }
+        } catch (e) {
+          console.error('Error resolving auth context:', e);
         }
       } else {
         setUserRole(null);
         setCurrentSessionId(null);
         cleanupSessionMonitoring();
+        setLoading(false);
       }
-      setLoading(false);
     });
     
     return () => {
@@ -253,7 +251,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       register,
       setOrganization 
     }}>
-      {!loading && children}
+      {children}
     </AuthContext.Provider>
   );
 };
