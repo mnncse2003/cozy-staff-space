@@ -19,6 +19,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { query, collection, where, getDocs } from 'firebase/firestore';
 import LoginDevicesSection from '@/components/profile/LoginDevicesSection';
+import ImageCropDialog from '@/components/ui/image-crop-dialog';
 
 interface ProfileData {
   name: string;
